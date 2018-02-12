@@ -82,9 +82,34 @@ def getEntropy(data):
     entropy of the time signal"
     '''
     return scipy.stats.entropy(data)
-def getMaxInds(data):
-    ''' Maximum index .. Need to implement'''
-    pass
-def getMeanFreq(data):
+def getFFT(data):
+    ''' i/p  : time domain data
+        o/p :  Frequency domain info. Performs fft on time series data.
+    '''
+    return np.fft.rfft(data)
+def getMaxInds(fData):
+    '''
+    ip : frequency domain signal. Typically the output of getFFT(data)
+    op : Maximum index of the frequency component
+    '''
+    mag = np.abs(fData)
+    return np.argmax(mag)
+
+def getMeanFreq(fData):
     
-    
+    return np.average(fData)
+
+def getSkewness(fData):
+    ''' 
+    ip : frequency domain signal. Typically the output of getFFT(data)
+    op : skewness of the frequency distribution
+    '''
+    return scipy.stats.skew(fData, bias = False)
+
+def getKurtosis(fData):
+    ''' 
+    ip : frequency domain signal. Typically the output of getFFT(data)
+    op : skewness of the frequency distribution
+    '''
+    return scipy.stats.kurtosis(fData, bias = False)
+def 

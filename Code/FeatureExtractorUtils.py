@@ -112,4 +112,3 @@ def getKurtosis(fData):
     op : skewness of the frequency distribution
     '''
     return scipy.stats.kurtosis(fData, bias = False)
-def 

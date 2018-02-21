@@ -8,8 +8,8 @@ Created on Tue Feb 20 12:38:41 2018
 import numpy as np
 from sklearn.svm import SVC
 
-Y = np.load('all_data.npz')['arr_1']
-X = np.load('features.npy')
+Y = np.load('../data/all_data.npz')['arr_1']
+X = np.load('../data/features.npy')
 X[np.isinf(X)] = 0.0
 cls = 1 # Class to be tested
 

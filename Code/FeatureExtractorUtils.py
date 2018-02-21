@@ -81,6 +81,7 @@ def getEntropy(data):
     ''' May need to edit this function. May not be the right way to calculate
     entropy of the time signal"
     '''
+    data = data - np.min(data)
     return scipy.stats.entropy(data)
 def getFFT(data):
     ''' i/p  : time domain data

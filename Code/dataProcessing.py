@@ -8,7 +8,7 @@ Created on Tue Feb  6 10:34:59 2018
 
 import numpy as np
 
-path = 'all_data.npy'
+path = '../data/all_data.npy'
 sensorData = np.asarray(np.load(path))
 '''
 sensorData has the following dimensions 

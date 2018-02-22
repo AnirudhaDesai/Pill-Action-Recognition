@@ -7,7 +7,7 @@ This is a temporary script file.
 import numpy as np
 import FeatureExtractorUtils as fe
 
-datafiles = np.load('all_data.npz')
+datafiles = np.load('../data/all_data.npz')
 
 id_data = np.asarray(datafiles['arr_0'])
 

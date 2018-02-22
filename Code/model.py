@@ -7,11 +7,12 @@ Created on Tue Feb 20 12:38:41 2018
 
 import numpy as np
 from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
 
 Y = np.load('all_data.npz')['arr_1']
 X = np.load('features.npy')
-X[np.isinf(X)] = 0.0
-cls = 1 # Class to be tested
+
+cls = 3 # Class to be tested
 
 Y = (Y == cls)*1.0
 
@@ -28,3 +29,8 @@ model = SVC(kernel='linear')
 model.fit(X_train, Y_train)
 pred = model.predict(X_test)
 print('Acc = ', np.mean(pred == Y_test))
+
+model2 = RandomForestClassifier()
+model2.fit(X_train,Y_train)
+pred = model2.predict(X_test)
+print('RFCAcc = ', np.mean(pred == Y_test))

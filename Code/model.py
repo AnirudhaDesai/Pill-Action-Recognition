@@ -12,11 +12,27 @@ from sklearn.linear_model import LogisticRegression as logreg
 from sklearn.tree import DecisionTreeClassifier as dtree
 from sklearn.ensemble import RandomForestClassifier as RFC
 
+class newmodel:
+    
+    def __init__(self, a = None):
+        self.pred = a
+        pass
+    
+    def fit(self, X, Y):
+        pass
+    
+    def predict(self, X):
+        if self.pred == None:
+            return np.random.randint(0, 2, X.shape[0])
+        else:
+            return np.zeros(X.shape[0]) + self.pred
+    
 def get_test_train_idx(total, test = 100):
-    idx_test = np.random.randint(0, total, test)
-    idx_train = [i for i in range(0, total) if i not in idx_test]
+    idx_test = np.random.choice(np.arange(0, total), size = test, replace=False)
+    idx_test = np.sort(idx_test)
+    idx_train = np.array([i for i in range(0, total) if i not in idx_test])
     return idx_train, idx_test
-
+ 
 X = np.load('../misc/new_features.npy')
 Y = np.load('../misc/new_all_data.npz')['arr_1']
 cls = 2 # Class to be tested
@@ -25,7 +41,8 @@ Y = (Y == cls)*1.0
 
 iterations = 20
 models = {LinearSVC(): 'Linear SVM', SVC(kernel='sigmoid'): 'Sigmoid SVM', RFC(): 'Random Forest', 
-          logreg(): 'Logistic Regression', dtree(): 'Decision Tree'}
+          logreg(): 'Logistic Regression', dtree(): 'Decision Tree', newmodel(): 'True Random',
+          newmodel(a=0): 'Always Zero', newmodel(a=1): 'Always One'}
 
 best_model = None
 best_acc = 0

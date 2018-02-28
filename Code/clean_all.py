@@ -18,7 +18,7 @@ def findtim(arr, st_idx, target):
         if arr[i] >= target:
             return i
  
-path = 'test_bed/'
+path = '../misc/test_bed_feb_15/'
 csv = {}
 sensors = ['base_accel_csv', 'base_gyro_csv', 
           'cap_accel_csv', 'cap_gyro_csv',
@@ -41,7 +41,7 @@ actions = np.array(pd.read_csv(path + 'actions.csv'))
 act_st = actions[:, 1::2]
 act_end = actions[:, 2::2]
 
-vid_st = np.genfromtxt(path + 'sync.csv')
+vid_st = np.genfromtxt(path + 'sync.csv', delimiter=',')
 vid_st = vid_st[:, 1]
 print('Done Reading')
 
@@ -82,6 +82,6 @@ for idx in range(num_samples):
 print('Data Cleaned - Data Size ->' + str(data.shape))
 print('Labels Size ->' + str(keys.shape))
 print('Saving all data...')        
-np.savez('all_data.npz', data, keys)
+np.savez(path + 'new_all_data.npz', data, keys)
 
 

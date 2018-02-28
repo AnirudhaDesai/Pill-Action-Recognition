@@ -7,7 +7,8 @@ This is a temporary script file.
 import numpy as np
 import FeatureExtractorUtils as fe
 
-datafiles = np.load('../data/all_data.npz')
+path = '../misc/test_bed_feb_15/'
+datafiles = np.load('../misc/test_bed_feb_15/new_all_data.npz')
 
 id_data = np.asarray(datafiles['arr_0'])
 
@@ -58,4 +59,4 @@ for i in range(N):
     features = np.vstack((features, feature_row))
     
 features = features[1:]
-np.save('features.npy', features)    
+np.save(path + 'new_features.npy', features)    

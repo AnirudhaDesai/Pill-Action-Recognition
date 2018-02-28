@@ -85,7 +85,7 @@ wear_features = wear_features[1:]
 base_wear_features = np.hstack((base_features, wear_features))
 cap_wear_features = np.hstack((cap_features, wear_features))
 
-np.save('../misc/features.npy', features)    
+np.save('../misc/base_cap_wear_features.npy', features)    
 np.save('../misc/base_features.npy', base_features)
 np.save('../misc/cap_features.npy', cap_features)
 np.save('../misc/wear_features.npy', wear_features)

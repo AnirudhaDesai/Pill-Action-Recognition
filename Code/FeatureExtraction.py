@@ -7,7 +7,7 @@ This is a temporary script file.
 import numpy as np
 import FeatureExtractorUtils as fe
 
-datafiles = np.load('../data/day1_data.npz')
+datafiles = np.load('../misc/new_all_data.npz')
 print('Loaded file')
 id_data = np.asarray(datafiles['arr_0'])
 
@@ -82,8 +82,12 @@ features = features[1:]
 base_features = base_features[1:]
 cap_features = cap_features[1:]
 wear_features = wear_features[1:]
+base_wear_features = np.hstack((base_features, wear_features))
+cap_wear_features = np.hstack((cap_features, wear_features))
 
-np.save('../data/features.npy', features)    
-np.save('../data/base_features.npy', base_features)
-np.save('../data/cap_features.npy', cap_features)
-np.save('../data/wear_features.npy', wear_features)
+np.save('../misc/features.npy', features)    
+np.save('../misc/base_features.npy', base_features)
+np.save('../misc/cap_features.npy', cap_features)
+np.save('../misc/wear_features.npy', wear_features)
+np.save('../misc/cap_wear_features.npy', cap_wear_features)
+np.save('../misc/base_wear_features.npy', base_wear_features)

@@ -7,41 +7,26 @@ Created on Tue Feb 20 12:38:41 2018
 
 import numpy as np
 from sklearn.svm import SVC
-<<<<<<< HEAD
 from sklearn.svm import LinearSVC as LinearSVC
 from sklearn.linear_model import LogisticRegression as logreg
 from sklearn.tree import DecisionTreeClassifier as dtree
 from sklearn.ensemble import RandomForestClassifier as RFC
-=======
-from sklearn.ensemble import RandomForestClassifier
-
-
-Y = np.load('all_data.npz')['arr_1']
-X = np.load('features.npy')
-
-cls = 3 # Class to be tested
->>>>>>> 8da123f47e23716106b3046c1f03cff672e7a5f5
 
 def get_test_train_idx(total, test = 100):
     idx_test = np.random.randint(0, total, test)
     idx_train = [i for i in range(0, total) if i not in idx_test]
     return idx_train, idx_test
 
-<<<<<<< HEAD
-X = np.load('../data/new_features.npy')
-Y = np.load('../data/new_all_data.npz')['arr_1']
+X = np.load('../misc/new_features.npy')
+Y = np.load('../misc/new_all_data.npz')['arr_1']
 cls = 2 # Class to be tested
-=======
 
->>>>>>> 8da123f47e23716106b3046c1f03cff672e7a5f5
 Y = (Y == cls)*1.0
-
 
 iterations = 20
 models = {LinearSVC(): 'Linear SVM', SVC(kernel='sigmoid'): 'Sigmoid SVM', RFC(): 'Random Forest', 
           logreg(): 'Logistic Regression', dtree(): 'Decision Tree'}
 
-<<<<<<< HEAD
 best_model = None
 best_acc = 0
 for model in models:
@@ -69,16 +54,3 @@ for model in models:
         best_model = model
 
 print('The best model is ', models[best_model], ' acc = ', best_acc/iterations)
-=======
-X_train = X[idx_train]
-Y_train = Y[idx_train]
-model = SVC(kernel='linear')
-model.fit(X_train, Y_train)
-pred = model.predict(X_test)
-print('Acc = ', np.mean(pred == Y_test))
-
-model2 = RandomForestClassifier()
-model2.fit(X_train,Y_train)
-pred = model2.predict(X_test)
-print('RFCAcc = ', np.mean(pred == Y_test))
->>>>>>> 8da123f47e23716106b3046c1f03cff672e7a5f5

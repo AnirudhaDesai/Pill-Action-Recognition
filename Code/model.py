@@ -35,10 +35,25 @@ def get_test_train_idx(total, test = 30):
     idx_test = np.sort(idx_test)
     idx_train = np.array([i for i in range(0, total) if i not in idx_test])
     return idx_train, idx_test
- 
 X = np.load('../misc/cap_features.npy')
 Y = np.load('../misc/no_windows_data.npz')['arr_1']
 cls = 1 # Class to be tested
+
+def getdata(wear=True, base=True, cap=False):
+    Y = np.load('../misc/new_all_data.npz')['arr_1']
+    path = '../misc/'
+    endpath = 'features.npy'
+    if base == True:
+        path += 'base_'
+    if cap == True:
+        path += 'cap_'
+    if wear == True:
+        path += 'wear_'
+    X = np.load(path + endpath)
+    return X, Y
+    
+X, Y = getdata(wear=True, base=True, cap=True)
+cls = 0 # Class to be tested
 
 Y = (Y == cls)*1.0
 

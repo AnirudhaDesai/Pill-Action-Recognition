@@ -12,8 +12,6 @@ from sklearn.linear_model import LogisticRegression as logreg
 from sklearn.tree import DecisionTreeClassifier as dtree
 from sklearn.ensemble import RandomForestClassifier as RFC
 import featureSelect as fs
-from numpy import inf
-import dill as pickle 
 
 class newmodel:
     
@@ -30,19 +28,18 @@ class newmodel:
         else:
             return np.zeros(X.shape[0]) + self.pred
     
-def get_test_train_idx(total, test = 30):
+def get_test_train_idx(total, test = 100):
     idx_test = np.random.choice(np.arange(0, total), size = test, replace=False)
     idx_test = np.sort(idx_test)
     idx_train = np.array([i for i in range(0, total) if i not in idx_test])
     return idx_train, idx_test
  
-X = np.load('../misc/cap_features.npy')
-Y = np.load('../misc/no_windows_data.npz')['arr_1']
-cls = 1 # Class to be tested
+X = np.load('../misc/cap_wear_features.npy')
+Y = np.load('../misc/new_all_data.npz')['arr_1']
+cls = 3 # Class to be tested
 
 Y = (Y == cls)*1.0
 
-X[X== -inf]=0
 
 iterations = 20
 #models = {LinearSVC(): 'Linear SVM', SVC(kernel='sigmoid'): 'Sigmoid SVM', RFC(): 'Random Forest', 
@@ -52,13 +49,12 @@ models = {RFC():'Random Forest Classifier'}
 
 best_model = None
 best_acc = 0
-best_pred = -1
 for model in models:
     print('Testing Model - ', models[model])
     avg_acc = 0
     avg_fp = 0.0
     for it in range(0, iterations):
-        idx_train, idx_test = get_test_train_idx(X.shape[0], 30)
+        idx_train, idx_test = get_test_train_idx(X.shape[0], 100)
         
         X_test = X[idx_test]
         Y_test = Y[idx_test]
@@ -76,15 +72,5 @@ for model in models:
     if (avg_acc > best_acc):
         best_acc = avg_acc
         best_model = model
-        best_pred = pred
 
 print('The best model is ', models[best_model], ' acc = ', best_acc/iterations)
-
-# Pickle the best model 
-
-filename = 'ML_model_v1.pk'
-with open('../model/'+filename, 'wb') as file:
-    pickle.dump(best_model, file)
-print('Pickled the model to file : ', filename)
-    
-    

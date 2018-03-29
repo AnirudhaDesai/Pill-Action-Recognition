@@ -64,7 +64,10 @@ def getEnergyMeasure(data):
     o/p - Energy measure of the data along each axis. Energy measure
             is taken to be the mean of squares along each axis
     '''        
-    return np.mean(data[0]**2), np.mean(data[1]**2), np.mean(data[2]**2)
+    if data.ndim > 1:
+        return np.mean(data**2,axis=1)    
+    else :
+        return np.mean(data**2)
 
 def getIQR(data):
     '''

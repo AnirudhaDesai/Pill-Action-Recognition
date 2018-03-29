@@ -18,13 +18,13 @@ def findtim(arr, st_idx, target):
         if arr[i] >= target:
             return i
  
-path = '../misc/test_bed_feb_15/'
+path = '../misc/'
 csv = {}
 sensors = ['base_accel_csv', 'base_gyro_csv', 
           'cap_accel_csv', 'cap_gyro_csv',
           'wear_accel_csv', 'wear_gyro_csv', ]
 
-buffer = 3# Quantized jumps depending on sampling frequency
+buffer = 0# Quantized jumps depending on sampling frequency
 bufferSize = 5# Number of samples per buffer jump
 
 print('Reading CSVs..')
@@ -82,6 +82,5 @@ for idx in range(num_samples):
 print('Data Cleaned - Data Size ->' + str(data.shape))
 print('Labels Size ->' + str(keys.shape))
 print('Saving all data...')        
-np.savez(path + 'new_all_data.npz', data, keys)
-
+np.savez(path + 'no_windows_data.npz', data, keys)
 

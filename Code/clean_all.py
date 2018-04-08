@@ -18,7 +18,9 @@ def findtim(arr, st_idx, target):
         if arr[i] >= target:
             return i
  
-path = '../misc/'
+
+path = '../misc/test_bed_all/'
+
 csv = {}
 sensors = ['base_accel_csv', 'base_gyro_csv', 
           'cap_accel_csv', 'cap_gyro_csv',
@@ -26,6 +28,7 @@ sensors = ['base_accel_csv', 'base_gyro_csv',
 
 buffer = 0# Quantized jumps depending on sampling frequency
 bufferSize = 5# Number of samples per buffer jump
+CORRECT_FOR_SENSORS = True
 
 print('Reading CSVs..')
 csv[sensors[0]] = np.genfromtxt(path + 'METAWEAR_base_sensor_accel.csv', delimiter=',')
@@ -36,6 +39,12 @@ csv[sensors[3]] = np.genfromtxt(path + 'METAWEAR_cap_sensor_gyro.csv', delimiter
 
 csv[sensors[4]] = np.genfromtxt(path + 'WEARABLE_sensor_accel.csv', delimiter=',')
 csv[sensors[5]] =  np.genfromtxt(path + 'WEARABLE_sensor_gyro.csv', delimiter=',')
+
+if CORRECT_FOR_SENSORS == True:
+    csv[sensors[0]][:270299, 3] = -csv[sensors[0]][:270299, 3] # correct base accel
+    print('Mean base accel Z-axis = ', np.mean(csv[sensors[0]][:, 3]))
+    #csv[sensors[2]][:274397, 3] = -csv[sensors[2]][:274397, 3]
+    print('Mean cap accel Z-axis = ', np.mean(csv[sensors[2]][:, 3]))
 
 actions = np.array(pd.read_csv(path + 'actions.csv'))
 act_st = actions[:, 1::2]
@@ -72,6 +81,8 @@ for idx in range(num_samples):
                 start = actst-(buffer-buf)*bufferSize
                 end = actend + 1 + buf*bufferSize
                 curIdx = idx*(buffer+1)*num_actions + action*(buffer+1) + buf
+                if curIdx == 24 and s_idx == 1 and sensor_t == 0:
+                    print(cur_idx[sensor] , vid_st[idx], vid_st[idx] + getms(act_st[idx, action]), act_st[idx, action]) 
                 data[curIdx, s_idx, sensor_t, 0] = csv[s_name][start:end, 1]
                 data[curIdx, s_idx, sensor_t, 1] = csv[s_name][start:end, 2]
                 data[curIdx, s_idx, sensor_t, 2] = csv[s_name][start:end, 3]
@@ -82,5 +93,6 @@ for idx in range(num_samples):
 print('Data Cleaned - Data Size ->' + str(data.shape))
 print('Labels Size ->' + str(keys.shape))
 print('Saving all data...')        
-np.savez(path + 'no_windows_data.npz', data, keys)
+
+np.savez(path + 'combined_data.npz', data, keys)
 

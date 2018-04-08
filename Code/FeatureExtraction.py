@@ -7,14 +7,17 @@ This is a temporary script file.
 import numpy as np
 import FeatureExtractorUtils as fe
 
-datafiles = np.load('../misc/no_windows_data.npz')
+
+path = '../misc/test_bed_all/'
+
+datafiles = np.load(path + 'new_all_data.npz')
+
 print('Loaded file')
 id_data = np.asarray(datafiles['arr_0'])
 
 #print (id_data.shape)
 N,L,T,D = id_data.shape # N- id, L-sensor location, T- sensor Type, D - dim
 
-print (id)
 
 body_features = [fe.getMean, fe.getStdDev, fe.getMeadianAbsDev, fe.getMax,
                 fe.getMin, fe.getIQR, fe.getEntropy,fe.getEnergyMeasure
@@ -39,7 +42,7 @@ for i in range(N):
     feature_row = np.empty((0,))
     for l in range(L):
         sub_features = np.empty((0,))
-        print ('for sensor : ', l)
+        #print ('for sensor : ', l)
         for t in range(T):
             #get sma , get energy measure
             
@@ -47,7 +50,7 @@ for i in range(N):
 #                print(id_data[i][l][t][d])
                 sdata = np.asarray(id_data[i][l][t][d])
                 bComp = fe.getBodyAccelComponent(sdata)
-                print bComp.shape
+               
                 
                 gComp = fe.getGravityAccelComponent(sdata)
 
@@ -87,13 +90,11 @@ wear_features = wear_features[1:]
 base_wear_features = np.hstack((base_features, wear_features))
 cap_wear_features = np.hstack((cap_features, wear_features))
 
-print('Saving Files..')
-np.save('../misc/features.npy', features)    
+print('Saving Files..')  
 
-np.save('../misc/base_cap_wear_features.npy', features)    
-
-np.save('../misc/base_features.npy', base_features)
-np.save('../misc/cap_features.npy', cap_features)
-np.save('../misc/wear_features.npy', wear_features)
-np.save('../misc/cap_wear_features.npy', cap_wear_features)
-np.save('../misc/base_wear_features.npy', base_wear_features)
+np.save(path + 'base_cap_wear_features.npy', features)    
+np.save(path + 'base_features.npy', base_features)
+np.save(path + 'cap_features.npy', cap_features)
+np.save(path + 'wear_features.npy', wear_features)
+np.save(path + 'cap_wear_features.npy', cap_wear_features)
+np.save(path + 'base_wear_features.npy', base_wear_features)

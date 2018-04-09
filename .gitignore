@@ -1,3 +1,6 @@
 misc/
 data/all/
 Code/__pycache__/
+*.pyc
+*.pyo
+__pycache__/

@@ -5,17 +5,13 @@ Created on Thu Apr  5 16:24:08 2018
 @author: anirudha
 """
 import requests
-<<<<<<< HEAD
-import json
-=======
 from tables import Install
->>>>>>> f467962dd3c212b15daf4ba7c79775301904ab33
 
 class Helpers:
-    def __init__(self,flask_app):
-        self.logger = flask_app.logger
+    def __init__(self):
+        pass
     
-    def build_url(self,addr,*args):
+    def build_url(addr,*args):
         '''
     
         :param addr: Address
@@ -27,12 +23,11 @@ class Helpers:
         for i in range(len(args)-1):
             comp += args[i]+'/'
         comp += args[len(args)-1]
-        
         url = urllib.parse.urljoin("http://"+addr,comp)
-        logger.debug('Built url : ', url)
+    
         return url
     
-    def get_request(self,url,data=None):
+    def get_request(url,params=None):
         '''
     
         :param url: url to send the get request
@@ -42,10 +37,7 @@ class Helpers:
         response = None
     
         try:
-            self.logger.debug('GET request : %s', url)
-            params = json.dumps(data)
-            self.logger.debug(str(params))
-            response = requests.get(url,params=params)
+            response = requests.get(url, params=params)
     
         except Exception as e:
             print(e)

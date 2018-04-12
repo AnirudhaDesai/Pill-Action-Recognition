@@ -8,23 +8,34 @@ Created on Wed Feb 28 13:48:00 2018
 
 import os
 from flask import Flask,jsonify, request
+from flask import Response
 import pandas as pd
 import auth as au
 from helpers import Helpers
 import json
+import sys
 #import dill as pickle
 
 app = Flask(__name__)
+app.config.update(
+JSONIFY_MIMETYPE = 'application/json'
+)
 global hp
-hp = Helpers()      # all common methods/variables can go here
+hp = Helpers(app)      # all common methods/variables can go here
 @app.route('/sign_in', methods = ['POST'])
 def sign_in():
+    response = '300'
+#    app.logger.debug('mimetype : %s', str(app.config))
+    
     try:
-        values = json.loads(request.get_json())
-        id_token = values['id_token']
-        responses = au.verify_sign_in(id_token, hp)
+
+        values = request.form.to_dict()
+        app.logger.info('json : %s', str(values))        
+        id_token = values['idToken']
+        client_id = values['id']
+        response = au.verify_sign_in(id_token, client_id, hp)
         app.logger.info('Verifying sign in..')
-        return (responses)
+        return (response)
     except Exception as e:
         raise e
         

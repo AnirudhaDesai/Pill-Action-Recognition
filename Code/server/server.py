@@ -13,25 +13,25 @@ import pandas as pd
 import auth as au
 from helpers import Helpers
 import json
-<<<<<<< HEAD
+
 import sys
 #import dill as pickle
-=======
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from tables import Install, Base
 
->>>>>>> f467962dd3c212b15daf4ba7c79775301904ab33
+
 
 app = Flask(__name__)
 app.config.update(
 JSONIFY_MIMETYPE = 'application/json'
 )
 global hp
-<<<<<<< HEAD
+
 hp = Helpers(app)      # all common methods/variables can go here
-=======
-hp = Helpers()   # all common methods/variables can go here
+
+
 
 #Create SQL engine, session-factory object and create all tables
 sql_engine = create_engine('sqlite:///:memory:', echo=True)
@@ -47,7 +47,7 @@ DELETE_SUCCESS = ('Deletion complete', 200)
 
 
 
->>>>>>> f467962dd3c212b15daf4ba7c79775301904ab33
+
 @app.route('/sign_in', methods = ['POST'])
 def sign_in():
     response = '300'
@@ -59,7 +59,8 @@ def sign_in():
         app.logger.info('json : %s', str(values))        
         id_token = values['idToken']
         client_id = values['id']
-        response = au.verify_sign_in(id_token, client_id, hp)
+        response = au.verify_sign_in_easy(id_token, client_id, hp)
+
         app.logger.info('Verifying sign in..')
         return (response)
     except Exception as e:

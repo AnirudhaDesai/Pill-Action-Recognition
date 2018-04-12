@@ -1,5 +1,8 @@
-from google.oauth2 import id_token
-from google.auth.transport import requests
+try:
+    from google.oauth2 import id_token
+    from google.auth.transport import requests
+except Exception as e:
+    print (e)
 
 def verify_sign_in(token,client_id, hp):
 #    responses = verify_sign_in_easy(token,client_id,hp)

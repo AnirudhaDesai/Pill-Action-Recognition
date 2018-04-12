@@ -5,11 +5,11 @@ Created on Thu Apr  5 16:24:08 2018
 @author: anirudha
 """
 import requests
-<<<<<<< HEAD
+
 import json
-=======
+
 from tables import Install
->>>>>>> f467962dd3c212b15daf4ba7c79775301904ab33
+
 
 class Helpers:
     def __init__(self,flask_app):

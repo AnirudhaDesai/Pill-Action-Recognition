@@ -9,7 +9,7 @@ Created on Wed Feb 28 13:48:00 2018
 from flask import Flask, jsonify, request
 import auth as au
 from helpers import Helpers
-
+from dateutil import parser as dateparser
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from tables import Install, User, Medication, Dosage, Intake, Base
@@ -139,6 +139,12 @@ def create_user():
 @app.route('/get_medicine_data', methods=['GET'])
 def get_medicine_data():
     u_id = request.headers['User-Id']
+    st_date = request.args.get('start_date', None)
+    end_date = request.args.get('end_date', None)
+    
+    if st_date is not None:
+        st_date = dateparser.parse(st_date)
+        end_date = dateparser.parse(end_date)
     
     cur_session = Session()
     meds = cur_session.query(Medication).filter(Medication.user_id == u_id).all()
@@ -159,11 +165,17 @@ def get_medicine_data():
         
         intakes = cur_session.query(Intake).filter(Intake.med_id == med.med_id).all()
         for intake in intakes:
+            if st_date is not None:
+                cur_date = dateparser.parse(intake.planned_date)
+                if cur_date > end_date or cur_date < st_date:
+                    continue
+                
             cur_intake = {'medicine_id': med.med_id,
                           'planned_date_time': intake.planned_date,
                           'actual_date_time': intake.actual_date,
                           'intake_status': intake.get_status()}
             ret['intakes'].append(cur_intake)
+            
     return (jsonify(ret), 200)
         
     

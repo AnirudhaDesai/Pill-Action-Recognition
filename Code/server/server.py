@@ -6,22 +6,13 @@ Created on Wed Feb 28 13:48:00 2018
 @author: anirudha
 """
 
-import os
-from flask import Flask,jsonify, request
-from flask import Response
-import pandas as pd
+from flask import Flask, jsonify, request
 import auth as au
 from helpers import Helpers
-import json
-
-import sys
-#import dill as pickle
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from tables import Install, Base
-
-
+from tables import Install, User, Medication, Dosage, Intake, Base
 
 app = Flask(__name__)
 app.config.update(
@@ -33,8 +24,13 @@ hp = Helpers(app)      # all common methods/variables can go here
 
 
 
-#Create SQL engine, session-factory object and create all tables
-sql_engine = create_engine('sqlite:///:memory:', echo=True)
+# Create SQL engine, session-factory object and create all tables
+# These are my own credentials for my local MySql Server, you need
+# to use your own server credentials when running locally or use
+# in memory sqlite - create_engine('sqlite:///:memory:', echo = True)
+sql_engine = create_engine('mysql+pymysql://amitrc:preparetest@localhost:3306/testing', 
+                           pool_recycle=3600, 
+                           echo=True)
 Session = sessionmaker(bind=sql_engine)
 Base.metadata.create_all(sql_engine)
 
@@ -44,6 +40,8 @@ ENTRY_NOT_FOUND = ('', 204)
 DEVICE_ALREADY_REGISTERED = ('Device already registered with same push_id', 500)
 HOME_PAGE_SPLASH = ('<h2> Welcome to the DEV environment </h2>', 200)
 DELETE_SUCCESS = ('Deletion complete', 200)
+USER_ALREADY_EXISTS = ('Patient already exists with same patient Id', 500)
+USER_ADD_SUCCESS = ('User Added Successfully', 201)
 
 
 
@@ -79,7 +77,7 @@ def reg_device():
                     Install.install_id == cur_install.install_id
                     ).first()
     
-    if prev_install == None:
+    if prev_install is None:
         cur_session.add(cur_install)
     elif prev_install.push_id == cur_install.push_id:
         return DEVICE_ALREADY_REGISTERED
@@ -100,6 +98,75 @@ def upload_sensor_readings():
 @app.route('/', methods=['GET'])
 def index():
     return HOME_PAGE_SPLASH
+
+
+@app.route('/create_user', methods=['POST'])
+def create_user():
+    req = request.get_json()
+    
+    u_id = req['u_id']
+    p_id = req['p_id']
+    meds = req['meds']
+    dosages = req['dosages']
+    
+    cur_session = Session()
+    m_ids = [hp.keygen(cur_session, Medication, Medication.med_id) for i in range(len(meds))]
+    d_ids = [hp.keygen(cur_session, Dosage, Dosage.dosage_id) for i in range(len(dosages))]
+    
+    cur_user = User(user_id=u_id, patient_id=p_id)
+    cur_meds = [Medication(user_id=u_id, med_id=m_ids[i], 
+                           med_name=meds[i], 
+                           dosage_id=d_ids[i]) for i in range(len(meds))]
+    cur_dosages = [Dosage(dosage_id=d_ids[i], 
+                          days=hp.stringify(dosages[i]['days']), 
+                          times=hp.stringify(dosages[i]['times'])
+                          ) for i in range(len(dosages))]
+    
+    prev_user = cur_session.query(User).filter(
+                User.user_id == cur_user.user_id).first()
+    
+    if prev_user is not None:
+        return USER_ALREADY_EXISTS
+    
+    cur_session.add(cur_user)
+    cur_session.add_all(cur_meds)
+    cur_session.add_all(cur_dosages)
+    cur_session.commit()
+    cur_session.close()
+    return USER_ADD_SUCCESS 
+
+
+@app.route('/get_medicine_data', methods=['GET'])
+def get_medicine_data():
+    u_id = request.headers['User-Id']
+    
+    cur_session = Session()
+    meds = cur_session.query(Medication).filter(Medication.user_id == u_id).all()
+    
+    ret = {'medicines': [], 'dosages': [], 'intakes': []}
+    
+    for med in meds:
+        cur_med = {'id': med.med_id, 
+               'name': med.med_name, 
+               'image_url': 'https://aidsinfo.nih.gov/images/drugimages/full/truvada.jpg'}
+        ret['medicines'].append(cur_med)
+        
+        dose = cur_session.query(Dosage).filter(Dosage.dosage_id == med.dosage_id).first()
+        cur_dose = {'medicine_id': med.med_id,
+                    'days': dose.get_days(),
+                    'times': dose.get_times()}
+        ret['dosages'].append(cur_dose)
+        
+        intakes = cur_session.query(Intake).filter(Intake.med_id == med.med_id).all()
+        for intake in intakes:
+            cur_intake = {'medicine_id': med.med_id,
+                          'planned_date_time': intake.planned_date,
+                          'actual_date_time': intake.actual_date,
+                          'intake_status': intake.get_status()}
+            ret['intakes'].append(cur_intake)
+    return (jsonify(ret), 200)
+        
+    
 
 @app.route('/get_install/', methods=['GET'])
 def get_install():

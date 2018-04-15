@@ -6,19 +6,22 @@ Created on Wed Feb 28 13:48:00 2018
 @author: anirudha
 """
 
-import os
-from flask import Flask,jsonify, request
-from flask import Response
-import pandas as pd
+from flask import Flask, jsonify, request
 import auth as au
 from helpers import Helpers
-from dateutil import parser as dateparser
+<<<<<<< HEAD
 import json
 import sys
 #import dill as pickle
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from tables import Install, Base
+=======
+from dateutil import parser as dateparser
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from tables import Install, User, Medication, Dosage, Intake, Base
+>>>>>>> 20d8d1ec5d54477a475c1e6a2f7f84b4bdefa87e
 
 app = Flask(__name__)
 app.config.update(
@@ -48,8 +51,6 @@ HOME_PAGE_SPLASH = ('<h2> Welcome to the DEV environment </h2>', 200)
 DELETE_SUCCESS = ('Deletion complete', 200)
 USER_ALREADY_EXISTS = ('Patient already exists with same patient Id', 500)
 USER_ADD_SUCCESS = ('User Added Successfully', 201)
-
-
 
 
 @app.route('/sign_in', methods = ['POST'])
@@ -238,6 +239,3 @@ def remove_install():
 #    with open('./models/'+clf, 'rb') as f:
 #        model = pickle.load(f)
 #        
-        
-    
-    

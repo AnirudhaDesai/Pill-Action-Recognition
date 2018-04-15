@@ -7,8 +7,9 @@ Created on Thu Apr  5 16:24:08 2018
 import requests
 
 import json
+import numpy as np
 
-from tables import Install
+from tables import Install, Medication
 from pyfcm import FCMNotification
 
 
@@ -81,7 +82,20 @@ class Helpers:
         if len(cur_installs) == 0:
             return None
         return cur_installs
-
+    
+    def keygen(self, cur_session, cur_table, table_attr):
+        key = np.random.randint(0, 2**31)
+        prev_entry = cur_session.query(cur_table).filter(table_attr == key).first()
+        if prev_entry is not None:
+            return self.keygen(cur_session, cur_table, table_attr)
+        return key
+    
+    def stringify(self, lst):
+        ret = ''
+        for s in lst:
+            ret += ',' + s
+        return ret[1:]
+    
     def send_push_notification(reg_id_list, data_message=None):
         '''
         : param reg_id_list: list of registration ids

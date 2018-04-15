@@ -12,7 +12,6 @@ Make sure each class inherits from Base.
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, String, Integer
-from datetime import datetime, timezone
 from dateutil import parser
 Base = declarative_base()
 

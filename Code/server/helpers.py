@@ -9,7 +9,7 @@ import requests
 import json
 import numpy as np
 
-from tables import Install, Medication
+from tables import Install
 from pyfcm import FCMNotification
 
 
@@ -96,7 +96,7 @@ class Helpers:
             ret += ',' + s
         return ret[1:]
     
-    def send_push_notification(reg_id_list, data_message=None):
+    def send_push_notification(self, reg_id_list, data_message=None):
         '''
         : param reg_id_list: list of registration ids
         : param data_message: optional payload with custom key-value pairs
@@ -113,3 +113,10 @@ class Helpers:
                                                                      data_message=data_message)
 
         return result
+
+    # Is there a better way to do this?
+    def get_clean_data_array(self, shape):
+        ret = np.zeros(shape, dtype=np.object)
+        ret.fill([])
+        return ret
+        

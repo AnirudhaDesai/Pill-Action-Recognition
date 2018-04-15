@@ -6,25 +6,23 @@ Created on Wed Feb 28 13:48:00 2018
 @author: anirudha
 """
 
-import os
 from flask import Flask,jsonify, request
-from flask import Response
-import pandas as pd
 import auth as au
 from helpers import Helpers
 from dateutil import parser as dateparser
-import json
-import sys
-#import dill as pickle
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from tables import Install, User, Medication, Dosage, Intake, Base
+from q_service import Q_service
+from concurrent.futures import ThreadPoolExecutor
+import threading
 
 app = Flask(__name__)
 app.config.update(
 JSONIFY_MIMETYPE = 'application/json'
 )
 global hp
+async_executor = ThreadPoolExecutor(max_workers = 50)
 
 hp = Helpers(app)      # all common methods/variables can go here
 
@@ -48,6 +46,7 @@ HOME_PAGE_SPLASH = ('<h2> Welcome to the DEV environment </h2>', 200)
 DELETE_SUCCESS = ('Deletion complete', 200)
 USER_ALREADY_EXISTS = ('Patient already exists with same patient Id', 500)
 USER_ADD_SUCCESS = ('User Added Successfully', 201)
+DATA_ADD_REQUEST_COMPLETE = ('Successfully raised data add request', 201)
 
 
 
@@ -99,7 +98,32 @@ def reg_device():
 
 @app.route('/upload_sensor_readings', methods = ['POST'])
 def upload_sensor_readings():
-    pass
+    u_id = request.headers['User-Id']
+    
+    data = request.get_json()
+    ret = hp.get_clean_data_array((2,2,3))
+    ret_tim = hp.get_clean_data_array((2,2))
+    
+    for entry in data:
+        fields = entry.split('`')
+        d_type = int(fields[0])
+        s_type = int(fields[1])
+        
+        m_id = int(fields[2])
+        
+        cur_readings = fields[4].split('~')
+        ret[d_type, s_type, 0].append(float(cur_readings[0]))
+        ret[d_type, s_type, 1].append(float(cur_readings[1]))
+        ret[d_type, s_type, 2].append(float(cur_readings[2]))
+        
+        ret_tim[d_type, s_type].append(int(fields[5]))
+    
+    print('Moving on to different thread for async call, current thread -', threading.current_thread())
+    async_executor.submit(Q_service.enqueue, ret, ret_tim, m_id, u_id)
+    print('Spawned new thread for async call, now back to original thread', threading.current_thread())
+    
+    return DATA_ADD_REQUEST_COMPLETE
+    
 
 @app.route('/', methods=['GET'])
 def index():

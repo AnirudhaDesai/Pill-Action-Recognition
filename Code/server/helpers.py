@@ -9,12 +9,15 @@ import requests
 import json
 
 from tables import Install
+from pyfcm import FCMNotification
 
 
 class Helpers:
     def __init__(self,flask_app):
         self.logger = flask_app.logger
-    
+        apikey = "AAAAgOfyS6s:APA91bH0GGnd4Xvw_pWMDpGmsQrR79CU8_bOmDj2QsHyrpua89dwV_UUAcJNRELByd_uikq4Hd5oI-ik6uWoW9i4w3qgtdqqg8TYKwwhAg-HllaBKoIdAy9yF1tvIGaAUvXGLtdIzTqF"                 # api key from FCM for the app
+        self.push_service = FCMNotification(api_key = apikey)
+
     def build_url(self,addr,*args):
         '''
     
@@ -78,3 +81,21 @@ class Helpers:
         if len(cur_installs) == 0:
             return None
         return cur_installs
+
+    def send_push_notification(reg_id_list, data_message=None):
+        '''
+        : param reg_id_list: list of registration ids
+        : param data_message: optional payload with custom key-value pairs
+        : returns: Sends out push notification to multiple devices.response data from pyFCM 
+        '''
+        if len(reg_id_list) == 0:
+            self.logger.debug('No registration ids to send push notification to')
+            return
+        if len(reg_id_list) == 1:
+            result = self.push_service.single_device_data_message(registration_id=reg_id_list[0],
+                                                                  data_message=data_message)
+        else:
+            result = self.push_service.multiple_devices_data_message(registration_ids=reg_id_list,
+                                                                     data_message=data_message)
+
+        return result

@@ -13,15 +13,11 @@ import pandas as pd
 import auth as au
 from helpers import Helpers
 import json
-
 import sys
 #import dill as pickle
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from tables import Install, Base
-
-
 
 app = Flask(__name__)
 app.config.update(
@@ -44,8 +40,6 @@ ENTRY_NOT_FOUND = ('', 204)
 DEVICE_ALREADY_REGISTERED = ('Device already registered with same push_id', 500)
 HOME_PAGE_SPLASH = ('<h2> Welcome to the DEV environment </h2>', 200)
 DELETE_SUCCESS = ('Deletion complete', 200)
-
-
 
 
 @app.route('/sign_in', methods = ['POST'])
@@ -153,6 +147,3 @@ def remove_install():
 #    with open('./models/'+clf, 'rb') as f:
 #        model = pickle.load(f)
 #        
-        
-    
-    

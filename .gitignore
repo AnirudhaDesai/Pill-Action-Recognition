@@ -1,7 +1,7 @@
 misc/
 data/all/
 Code/__pycache__/
-Code/server/__pycache__
+Code/server/__pycache__/
 *.pyc
 *.pyo
 *.swp

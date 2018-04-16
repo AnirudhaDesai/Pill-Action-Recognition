@@ -174,6 +174,19 @@ def create_user(make_new_user=True):
 @app.route('/add_medicine', methods=['POST'])
 def add_medicine():
     create_user(make_new_user=False)
+    
+
+@app.route('/get_patient_list', methods=['GET'])
+def get_patient_list():
+    cur_session = Session()
+    
+    patient_list = cur_session.query(User).all()
+    
+    ret = []
+    for patient in patient_list:
+        ret.append({'u_id': patient.user_id, 'p_id': patient.patient_id})
+    
+    return (jsonify(ret), 200)
 
 @app.route('/get_medicine_data', methods=['GET'])
 def get_medicine_data():

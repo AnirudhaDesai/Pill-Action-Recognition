@@ -46,6 +46,7 @@ HOME_PAGE_SPLASH = ('<h2> Welcome to the DEV environment </h2>', 200)
 DELETE_SUCCESS = ('Deletion complete', 200)
 USER_ALREADY_EXISTS = ('Patient already exists with same patient Id', 500)
 USER_ADD_SUCCESS = ('User Added Successfully', 201)
+MEDICINE_ADD_SUCCESS = ('Medicines Added Successfully', 201)
 DATA_ADD_REQUEST_COMPLETE = ('Successfully raised data add request', 201)
 
 
@@ -131,7 +132,7 @@ def index():
 
 
 @app.route('/create_user', methods=['POST'])
-def create_user():
+def create_user(make_new_user=True):
     req = request.get_json()
     
     u_id = req['u_id']
@@ -142,8 +143,7 @@ def create_user():
     cur_session = Session()
     m_ids = [hp.keygen(cur_session, Medication, Medication.med_id) for i in range(len(meds))]
     d_ids = [hp.keygen(cur_session, Dosage, Dosage.dosage_id) for i in range(len(dosages))]
-    
-    cur_user = User(user_id=u_id, patient_id=p_id)
+        
     cur_meds = [Medication(user_id=u_id, med_id=m_ids[i], 
                            med_name=meds[i], 
                            dosage_id=d_ids[i]) for i in range(len(meds))]
@@ -152,19 +152,28 @@ def create_user():
                           times=hp.stringify(dosages[i]['times'])
                           ) for i in range(len(dosages))]
     
-    prev_user = cur_session.query(User).filter(
-                User.user_id == cur_user.user_id).first()
+    if make_new_user == True:
+        cur_user = User(user_id=u_id, patient_id=p_id)
+        prev_user = cur_session.query(User).filter(
+                    User.user_id == cur_user.user_id).first()
     
-    if prev_user is not None:
-        return USER_ALREADY_EXISTS
+        if prev_user is not None:
+            return USER_ALREADY_EXISTS
     
-    cur_session.add(cur_user)
+        cur_session.add(cur_user)
+        
     cur_session.add_all(cur_meds)
     cur_session.add_all(cur_dosages)
     cur_session.commit()
     cur_session.close()
-    return USER_ADD_SUCCESS 
+    if make_new_user == True:
+        return USER_ADD_SUCCESS
+    return MEDICINE_ADD_SUCCESS
 
+
+@app.route('/add_medicine', methods=['POST'])
+def add_medicine():
+    create_user(make_new_user=False)
 
 @app.route('/get_medicine_data', methods=['GET'])
 def get_medicine_data():

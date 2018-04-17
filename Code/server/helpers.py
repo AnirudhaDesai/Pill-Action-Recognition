@@ -9,7 +9,7 @@ import requests
 import json
 import numpy as np
 
-from tables import Install
+from tables import Install, Medication
 from pyfcm import FCMNotification
 
 
@@ -69,12 +69,15 @@ class Helpers:
         i_id = request.args.get('i_id', None)
         p_id = request.args.get('p_id', None)
         
-        if i_id == None and p_id == None and u_id == None:
+        return self.get_all_installs(cur_session, u_id, i_id, p_id)
+    
+    def get_all_installs(self, cur_session, u_id=None, i_id=None, p_id=None):
+        if i_id is None and p_id is None and u_id is None:
             return None
         
-        if i_id != None:
+        if i_id is not None:
             cur_installs = cur_session.query(Install).filter(Install.install_id == i_id).all()
-        elif u_id != None:
+        elif u_id is not None:
             cur_installs = cur_session.query(Install).filter(Install.user_id == u_id).all()
         else:
             cur_installs = cur_session.query(Install).filter(Install.push_id == p_id).all()
@@ -82,6 +85,28 @@ class Helpers:
         if len(cur_installs) == 0:
             return None
         return cur_installs
+    
+    def get_all_medications(self, cur_session, 
+                       m_id=None, m_name=None, u_id=None, d_id=None):
+        if m_id is None and u_id is None and d_id is None and m_name is None:
+            return None
+        
+        if m_id is not None:
+            cur_meds = cur_session.query(Medication).filter(
+                        Medication.med_id == m_id).all()
+        elif u_id is not None:
+            cur_meds = cur_session.query(Medication).filter(
+                        Medication.user_id == u_id).all()
+        elif m_name is not None:
+            cur_meds = cur_session.query(Medication).filter(
+                        Medication.med_name == m_name).all()
+        else:
+            cur_meds = cur_session.query(Medication).filter(
+                        Medication.dosage_id == d_id).all()
+        
+        if len(cur_meds) == 0:
+            return None
+        return cur_meds
     
     def keygen(self, cur_session, cur_table, table_attr):
         key = np.random.randint(0, 2**31)

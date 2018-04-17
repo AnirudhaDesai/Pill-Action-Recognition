@@ -14,8 +14,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from tables import Install, User, Medication, Dosage, Intake, Base
 from q_service import Q_service
+from prediction_service import PredictionService
 from concurrent.futures import ThreadPoolExecutor
 import threading
+
 
 app = Flask(__name__)
 app.config.update(
@@ -37,6 +39,7 @@ sql_engine = create_engine('mysql+pymysql://amitrc:preparetest@localhost:3306/te
                            echo=True)
 Session = sessionmaker(bind=sql_engine)
 Base.metadata.create_all(sql_engine)
+PredictionService.start_service(Session, hp, '../../model/')
 
 
 # Standard responses

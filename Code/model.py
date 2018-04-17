@@ -14,6 +14,7 @@ from sklearn.ensemble import RandomForestClassifier as RFC
 import featureSelect as fs
 from numpy import inf
 from sklearn.neighbors import KNeighborsClassifier as KNN
+import pickle
 
 DIRECTORY = '../misc/test_bed_all/'
 
@@ -52,9 +53,9 @@ def getdata(wear=True, base=True, cap=False):
     
 
 if __name__ == '__main__':  
-    X, Y = getdata(wear=False, base=True, cap=False)
+    X, Y = getdata(wear=True, base=True, cap=False)
     X[np.isinf(X)] = 0.0
-    cls = 0 # Class to be tested
+    cls = 3 # Class to be tested
     
     Y = (Y == cls)*1.0
     
@@ -118,4 +119,9 @@ if __name__ == '__main__':
             best_model = model
     
     print('The best model is ', models[best_model], ' acc = ', best_acc/iterations, ' fp  =', best_fp)
+    best_model.fit(X, Y)
+    #pickle.dump(best_model, open('../model/m_twist.pkl', 'wb'))
+    #pickle.dump(best_model, open('../model/m_dispense.pkl', 'wb'))
+    #pickle.dump(best_model, open('../model/m_h2m.pkl', 'wb'))
+    pickle.dump(best_model, open('../model/m_w2m.pkl', 'wb'))
 

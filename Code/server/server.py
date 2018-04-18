@@ -40,7 +40,7 @@ sql_engine = create_engine('mysql+pymysql://amitrc:preparetest@localhost:3306/te
 Session = sessionmaker(bind=sql_engine)
 Base.metadata.create_all(sql_engine)
 PredictionService.start_service(Session, hp, '../../model/')
-
+Q_service.start_service(hp)
 
 # Standard responses
 ENTRY_NOT_FOUND = ('', 204)

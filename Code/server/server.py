@@ -266,27 +266,4 @@ def remove_install():
     
     return DELETE_SUCCESS
     
-#        
-#@app.route('/predict', methods = ['POST'])
-#def apicall():
-#    try:
-#        data_json = request.get_json()
-#        data = pd.read_json(data_json, orient='records')
-#    except Exception as e:
-#        raise e
-#    
-##    print (data)
-#    
-#    responses = jsonify(predictions = 'Predictions will be here')
-#    responses.status_code = 200
-#    return (responses)
-#    clf = 'ML_model_v1.pk'
-#    
-#    print ('Loading the model .. ')
-#    model = None
-#    with open('./models/'+clf, 'rb') as f:
-#        model = pickle.load(f)
-#        
-        
-    
     

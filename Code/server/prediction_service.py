@@ -16,12 +16,10 @@ class PredictionService():
     m_twist, m_dispense, m_h2m, m_w2m = None, None, None, None
     db_session_factory = None
     helper = None
-    STATUS_YES = 'Y'
-    STATUS_NO = 'N'
     
     timeout_window = 300        # number of seconds after which predict status
                                 # times out
-    
+    user_predict_status = None
     
     def __init__(self):
         pass
@@ -35,6 +33,8 @@ class PredictionService():
         PredictionService.m_h2m = pickle.load(open(path + 'm_h2m.pkl', 'rb'))
         PredictionService.m_w2m = pickle.load(open(path + 'm_w2m.pkl', 'rb'))
         PredictionService.user_predict_status = defaultdict()     # latest (status,time) of predicted "yes"
+        
+        
     @staticmethod
     def predict(medicine_id, user_id, data, time):
         # check if prediction to be done based on status. 
@@ -63,30 +63,29 @@ class PredictionService():
                     
                     PredictionService.helper.send_push_notification(push_ids, 
                                                                     'Intake detected for - user: ' + user_id + ', medicine: ' + meds.m_name)
-        
+                    # update user status
+                    PredictionService.change_status(PredictionService.helper.STATUS_YES, user_id, time)
+                    
     def is_predicted(u_id, time):
         #check if the prediction is already made for the user 
         # to be a 'Y' in the given window. If so, do not predict again.
-        predict_status = False
+        
         if u_id not in PredictionService.user_predict_status.keys():
             # new user. No prediction made yet. return .
-            return predict_status
-        else:
-            u_status = PredictionService.user_predict_status[u_id]
+            return False
+        u_status = PredictionService.user_predict_status[u_id]
         
-        if u_status[0] == PredictionService.STATUS_NO:
-            return predict_status
-        else:
-            # latest prediction was true. check if within the window
-            if time - u_status[1] > PredictionService.timeout_window:
-                return predict_status
-        predict_status = True
-        return predict_status
+        if u_status[0] == PredictionService.helper.STATUS_NO:
+            return False
+        # latest prediction was true. check if within the window
+        if time - u_status[1] > PredictionService.timeout_window*1000:
+                return False
+        
+        return True
 
-    def change_status(u_id, time):
-        # set the status to "YES" after prediction        
-        if u_id not in PredictionService.user_predict_status.keys():
-            PredictionService.user_predict_status[u_id] = \
-                (PredictionService.STATUS_YES, time)
+    def change_status(status, u_id, time):
+        # change status of the user. Can be called after prediction, after 
+        # user replied to notification        
+        PredictionService.user_predict_status[u_id] = \
+                (status, time)
     
-        

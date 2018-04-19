@@ -18,6 +18,8 @@ class Helpers:
         self.logger = flask_app.logger
         apikey = "AAAAgOfyS6s:APA91bH0GGnd4Xvw_pWMDpGmsQrR79CU8_bOmDj2QsHyrpua89dwV_UUAcJNRELByd_uikq4Hd5oI-ik6uWoW9i4w3qgtdqqg8TYKwwhAg-HllaBKoIdAy9yF1tvIGaAUvXGLtdIzTqF"                 # api key from FCM for the app
         self.push_service = FCMNotification(api_key = apikey)
+        self.STATUS_YES = 'Y'
+        self.STATUS_NO = 'N'
 
     def build_url(self,addr,*args):
         '''

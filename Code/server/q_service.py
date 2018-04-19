@@ -58,11 +58,11 @@ class Q_service:
         start = Q_service.med_timestamps[medicine_id][0,0][0]
         end = Q_service.med_timestamps[medicine_id][0,0][-1]
         if end-start > Q_service.t_window*1000:
-            Q_service.dispatch(medicine_id,user_id)
+            Q_service.dispatch(medicine_id,user_id, start)
 
         print('Executing Q_service on thread', threading.current_thread())
     
-    def dispatch(med_id, u_id):
+    def dispatch(med_id, u_id, start):
         D,S,A = Q_service.med_data[med_id].shape
         total_data = Q_service.med_data[med_id]
         times = Q_service.med_timestamps[med_id]
@@ -90,6 +90,6 @@ class Q_service:
                 Q_service.med_timestamps[med_id][d,s] = Q_service.med_timestamps[med_id][d,s][p_idx:]
         
         # Call prediction service on dispatch data
-        PredictionService.predict(med_id, u_id, dispatch_data)
+        PredictionService.predict(med_id, u_id, dispatch_data, start)
         
              

@@ -12,7 +12,7 @@ from helpers import Helpers
 from dateutil import parser as dateparser
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from tables import Install, User, Medication, Dosage, Intake, Base
+from tables import Install, User, Medication, Dosage, Intake, SensorReading, Base
 from q_service import Q_service
 from prediction_service import PredictionService
 from concurrent.futures import ThreadPoolExecutor
@@ -50,6 +50,7 @@ DELETE_SUCCESS = ('Deletion complete', 200)
 USER_ALREADY_EXISTS = ('Patient already exists with same patient Id', 500)
 USER_ADD_SUCCESS = ('User Added Successfully', 201)
 MEDICINE_ADD_SUCCESS = ('Medicines Added Successfully', 201)
+INTAKE_ADD_SUCCESS = ('Intake info Added Successfully', 201)
 DATA_ADD_REQUEST_COMPLETE = ('Successfully raised data add request', 201)
 
 
@@ -107,11 +108,17 @@ def upload_sensor_readings():
     data = request.get_json()
     ret = hp.get_clean_data_array((2,2,3))
     ret_tim = hp.get_clean_data_array((2,2))
+    ret_touch = []
+    sensor_readings = []
     
     for entry in data:
         fields = entry.split('`')
         d_type = int(fields[0])
         s_type = int(fields[1])
+        
+        if s_type == 2:
+            ret_touch.append((float(fields[4]), int(fields[5])))
+            continue
         
         m_id = int(fields[2])
         
@@ -121,10 +128,19 @@ def upload_sensor_readings():
         ret[d_type, s_type, 2].append(float(cur_readings[2]))
         
         ret_tim[d_type, s_type].append(int(fields[5]))
+        sensor_readings.append(SensorReading(user_id=u_id, 
+                                             med_id=m_id,
+                                             data=fields[0] + '`' + fields[1] + '`' + fields[4] + '`' + fields[5]))
     
     print('Moving on to different thread for async call, current thread -', threading.current_thread())
-    async_executor.submit(Q_service.enqueue, ret, ret_tim, m_id, u_id)
+    async_executor.submit(Q_service.enqueue, ret, ret_tim, ret_touch, m_id, u_id)
     print('Spawned new thread for async call, now back to original thread', threading.current_thread())
+    
+    
+    cur_session = Session()
+    cur_session.add_all(sensor_readings)
+    cur_session.commit()
+    cur_session.close()
     
     return DATA_ADD_REQUEST_COMPLETE
     
@@ -184,6 +200,8 @@ def get_patient_list():
     cur_session = Session()
     
     patient_list = cur_session.query(User).all()
+    cur_session.commit()
+    cur_session.close()
     
     ret = []
     for patient in patient_list:
@@ -228,11 +246,38 @@ def get_medicine_data():
             cur_intake = {'medicine_id': med.med_id,
                           'planned_date_time': intake.planned_date,
                           'actual_date_time': intake.actual_date,
-                          'intake_status': intake.get_status()}
+                          'intake_status': intake.intake_status}
             ret['intakes'].append(cur_intake)
-            
+    
+    cur_session.commit()
+    cur_session.close()
+    
     return (jsonify(ret), 200)
         
+
+@app.route('/create_intake', methods=['POST'])
+def create_intake():
+    req = request.get_json()
+    
+    m_id = req['medicine_id']
+    p_date = req['planned_date_time']
+    a_date = req['actual_date_time']
+    i_status = req['intake_status']
+    
+    cur_intake = Intake(med_id=m_id, 
+                        actual_date=a_date, 
+                        planned_date=p_date,
+                        intake_status=i_status)
+    
+    cur_session = Session()
+    cur_session.add(cur_intake)
+    cur_session.commit()
+    cur_session.close()
+    
+    return INTAKE_ADD_SUCCESS
+    
+
+
     
 
 @app.route('/get_install/', methods=['GET'])

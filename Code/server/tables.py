@@ -82,13 +82,15 @@ class Intake(Base):
     intake_id = Column(Integer, primary_key=True)
     planned_date = Column(String(40))
     actual_date = Column(String(40))
+    intake_status = Column(Integer)
     
     def __repr__(self):
-        return '<Intake(intake_id="%s", med_id="%s", planned_date="%s", actual_date="%s")>' % (
+        return '<Intake(intake_id="%s", med_id="%s", planned_date="%s", actual_date="%s", intake_status="%s")>' % (
                 self.intake_id,
                 self.med_id,
                 self.planned_date, 
-                self.actual_date)
+                self.actual_date,
+                self.intake_status)
     
     #todo: Implement logic to get intake_status, dummy logic below 
     def get_status(self):
@@ -98,5 +100,19 @@ class Intake(Base):
         if a_d > p_d:
             return 0
         return 1
+
+class SensorReading(Base):
+    __tablename__ = 'sensorreadings'
     
+    reading_id = Column(Integer, primary_key=True)
+    user_id = Column(String(25))
+    med_id = Column(Integer)
+    data = Column(String(100))
+    
+    
+    def __repr__(self):
+        return '<SensorReadings(user_id="%s", med_id="%s", data="%s")>' % (
+                self.user_id,
+                self.med_id,
+                self.data)
     

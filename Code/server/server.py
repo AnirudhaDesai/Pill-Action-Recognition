@@ -6,7 +6,7 @@ Created on Wed Feb 28 13:48:00 2018
 @author: anirudha
 """
 
-from flask import Flask,jsonify, request
+from flask import Flask,jsonify, request, render_template
 import auth as au
 from helpers import Helpers
 from dateutil import parser as dateparser
@@ -17,12 +17,19 @@ from q_service import Q_service
 from prediction_service import PredictionService
 from concurrent.futures import ThreadPoolExecutor
 import threading
+import pprint
+from flask_debugtoolbar import DebugToolbarExtension
 
 
 app = Flask(__name__)
+app.debug = True
+app.config['SECRET_KEY'] = '0799'
+toolbar = DebugToolbarExtension(app)
+
 app.config.update(
 JSONIFY_MIMETYPE = 'application/json'
 )
+
 global hp
 async_executor = ThreadPoolExecutor(max_workers = 50)
 
@@ -62,17 +69,19 @@ def sign_in():
 #    app.logger.debug('mimetype : %s', str(app.config))
     
     try:
-
-        values = request.form.to_dict()
-        app.logger.info('json : %s', str(values))        
-        id_token = values['idToken']
+        app.logger.info('Verifying sign in...')
+        
+#        app.logger.debug("Request : %s", str(request.json)  )
+        values = request.get_json()
+        app.logger.debug('json : %s', str(values))        
+        id_token = values['id_token']
         client_id = values['id']
         response = au.verify_sign_in_easy(id_token, client_id, hp)
-
-        app.logger.info('Verifying sign in..')
-        return (response)
     except Exception as e:
-        raise e
+        print ("Exception in sign in : " , e)
+        response = None
+
+    return (response)
         
 @app.route('/register_device', methods = ['POST'])
 def reg_device():
@@ -147,7 +156,7 @@ def upload_sensor_readings():
 
 @app.route('/', methods=['GET'])
 def index():
-    return HOME_PAGE_SPLASH
+    return render_template('homepage.html')
 
 
 @app.route('/create_user', methods=['POST'])

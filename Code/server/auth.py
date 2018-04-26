@@ -4,6 +4,7 @@ try:
 except Exception as e:
     print (e)
 
+
 def verify_sign_in(token,client_id, hp):
 #    responses = verify_sign_in_easy(token,client_id,hp)
     responses = None
@@ -35,13 +36,13 @@ def verify_sign_in(token,client_id, hp):
     
 
 def verify_sign_in_easy(token, client_id,hp):
-    print('Sending request ..')
+    hp.logger.info('Sending request to Google..')
     
     url = 'https://www.googleapis.com/oauth2/v3/tokeninfo'
     data = {'id_token':token}
-    hp.logger.debug(str(data))
+    
     response = hp.get_request(url,data)
-    if response.status_code != 200:
+    if response is None or response.status_code != 200:
         hp.logger.error('Response from google : %s ', str(response))
     return response
     

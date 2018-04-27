@@ -8,9 +8,10 @@ import requests
 
 import json
 import numpy as np
-
+import os
 from tables import Install, Medication
 from pyfcm import FCMNotification
+import configparser
 
 
 class Helpers:
@@ -20,6 +21,14 @@ class Helpers:
         self.push_service = FCMNotification(api_key = apikey)
         self.STATUS_YES = 'Y'
         self.STATUS_NO = 'N'
+        self.load_config()        
+    
+    def load_config(self):
+        config = configparser.ConfigParser()
+        cp = os.path.join(os.path.dirname(__file__),"./")
+        configPath = cp + 'server_config.ini'
+        config.read(configPath)
+        self.client_id = config['Basic']['client_id']
 
     def build_url(self,addr,*args):
         '''

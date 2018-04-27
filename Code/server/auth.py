@@ -5,12 +5,13 @@ except Exception as e:
     print (e)
 
 
-def verify_sign_in(token,client_id, hp):
+def verify_sign_in(token, hp):
 #    responses = verify_sign_in_easy(token,client_id,hp)
-    responses = None
+    userid = None
     try:
         # Specify the CLIENT_ID of the app that accesses the backend:
-        idinfo = id_token.verify_oauth2_token(token, requests.Request(), client_id)
+        hp.logger.debug(hp.client_id)
+        idinfo = id_token.verify_oauth2_token(token, requests.Request(), hp.client_id)
     
         # Or, if multiple clients access the backend server:
         # idinfo = id_token.verify_oauth2_token(token, requests.Request())
@@ -31,18 +32,20 @@ def verify_sign_in(token,client_id, hp):
     # Invalid token
         hp.logger.error('Sign in failed with error : %s',str(e))
         
-    hp.logger.debug('Response from google token info : %s', str(responses))
-    return responses
+    hp.logger.debug('Response from google token info : %s', str(userid))
+    return userid
     
 
 def verify_sign_in_easy(token, client_id,hp):
     hp.logger.info('Sending request to Google..')
     
-    url = 'https://www.googleapis.com/oauth2/v3/tokeninfo'
-    data = {'id_token':token}
-    
+    url = "https://www.googleapis.com/oauth2/v3/tokeninfo"
+    data = {'id_token':str(token)}
+#    while True:
+#        a = 1
     response = hp.get_request(url,data)
-    if response is None or response.status_code != 200:
-        hp.logger.error('Response from google : %s ', str(response))
+    
+    hp.logger.error('Response from google : %s ', str(response))
+    
     return response
     

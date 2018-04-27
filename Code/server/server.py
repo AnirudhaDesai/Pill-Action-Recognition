@@ -7,6 +7,7 @@ Created on Wed Feb 28 13:48:00 2018
 """
 
 from flask import Flask,jsonify, request, render_template
+from flask import make_response
 import auth as au
 from helpers import Helpers
 from dateutil import parser as dateparser
@@ -61,27 +62,25 @@ INTAKE_ADD_SUCCESS = ('Intake info Added Successfully', 201)
 DATA_ADD_REQUEST_COMPLETE = ('Successfully raised data add request', 201)
 
 
-
-
 @app.route('/sign_in', methods = ['POST'])
 def sign_in():
-    response = '300'
-#    app.logger.debug('mimetype : %s', str(app.config))
-    
+
     try:
         app.logger.info('Verifying sign in...')
-        
-#        app.logger.debug("Request : %s", str(request.json)  )
         values = request.get_json()
         app.logger.debug('json : %s', str(values))        
         id_token = values['id_token']
-        client_id = values['id']
-        response = au.verify_sign_in_easy(id_token, client_id, hp)
+        access_token = au.verify_sign_in(id_token, hp)
     except Exception as e:
         print ("Exception in sign in : " , e)
-        response = None
-
-    return (response)
+        return make_response('',400)
+    if access_token == None:
+        app.logger.info('Problem encountered in sign in')
+        return make_response('',400)
+    resp = {"access_token" : access_token}
+    response = make_response(jsonify(resp), 200)
+    response.headers['Content-Type'] = 'application/json'
+    return response
         
 @app.route('/register_device', methods = ['POST'])
 def reg_device():

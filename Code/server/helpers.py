@@ -12,6 +12,7 @@ import os
 from tables import Install, Medication
 from pyfcm import FCMNotification
 import configparser
+from hashlib import sha256 as sha2
 
 
 class Helpers:
@@ -21,6 +22,9 @@ class Helpers:
         self.push_service = FCMNotification(api_key = apikey)
         self.STATUS_YES = 'Y'
         self.STATUS_NO = 'N'
+        self.all_days = ['Monday', 'Tuesday', 
+                         'Wednesday', 'Thursday', 
+                         'Friday', 'Saturday', 'Sunday']
         self.load_config()        
     
     def load_config(self):
@@ -76,7 +80,7 @@ class Helpers:
         :param cur_session: current database session object
         :returns: List of matching entries if present, None otherwise
         '''
-        u_id = request.args.get('u_id', None)
+        u_id = self.read_user_id(request.args.get('u_id', None))
         i_id = request.args.get('i_id', None)
         p_id = request.args.get('p_id', None)
         
@@ -155,4 +159,12 @@ class Helpers:
         ret = np.zeros(shape, dtype=np.object)
         ret.fill([])
         return ret
+    
+    def read_user_id(self, u_id):
+        if u_id is None or u_id == '':
+            return ''
+        
+        algorithm = sha2()
+        algorithm.update(u_id.encode())
+        return algorithm.hexdigest()
         

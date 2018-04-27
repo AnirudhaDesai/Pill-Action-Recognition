@@ -18,7 +18,6 @@ from q_service import Q_service
 from prediction_service import PredictionService
 from concurrent.futures import ThreadPoolExecutor
 import threading
-import pprint
 from flask_debugtoolbar import DebugToolbarExtension
 
 
@@ -53,10 +52,11 @@ Q_service.start_service(hp)
 # Standard responses
 ENTRY_NOT_FOUND = ('', 204)
 DEVICE_ALREADY_REGISTERED = ('Device already registered with same push_id', 500)
-HOME_PAGE_SPLASH = ('<h2> Welcome to the DEV environment </h2>', 200)
 DELETE_SUCCESS = ('Deletion complete', 200)
 USER_ALREADY_EXISTS = ('Patient already exists with same patient Id', 500)
-USER_ADD_SUCCESS = ('User Added Successfully', 201)
+USER_ADD_SUCCESS = ('Patient Added Successfully', 201)
+USER_ADD_FAILED = ('Failed to add patient', 400)
+USER_DOES_NOT_EXIST = ('The specified patient does not exist', 400)
 MEDICINE_ADD_SUCCESS = ('Medicines Added Successfully', 201)
 INTAKE_ADD_SUCCESS = ('Intake info Added Successfully', 201)
 DATA_ADD_REQUEST_COMPLETE = ('Successfully raised data add request', 201)
@@ -86,7 +86,7 @@ def sign_in():
 def reg_device():
     p_id = request.form['push_id']
     i_id = request.headers['Install-Id']
-    u_id = request.headers['User-Id']
+    u_id = hp.read_user_id(request.headers['User-Id'])
     
     cur_install = Install(user_id=u_id, push_id=p_id, install_id=i_id)
     cur_session = Session()
@@ -111,7 +111,7 @@ def reg_device():
 
 @app.route('/upload_sensor_readings', methods = ['POST'])
 def upload_sensor_readings():
-    u_id = request.headers['User-Id']
+    u_id = hp.read_user_id(request.headers['User-Id'])
     
     data = request.get_json()
     ret = hp.get_clean_data_array((2,2,3))
@@ -158,14 +158,44 @@ def index():
     return render_template('homepage.html')
 
 
-@app.route('/create_user', methods=['POST'])
+@app.route('/create_user', methods=['POST', 'OPTIONS'])
 def create_user(make_new_user=True):
-    req = request.get_json()
+    if request.method == 'OPTIONS':
+        return handle_preflight()
     
-    u_id = req['u_id']
-    p_id = req['p_id']
-    meds = req['meds']
-    dosages = req['dosages']
+    u_id = hp.read_user_id(request.form['u_id'])
+    p_id = request.form['p_id']
+    
+    if len(u_id) == 0 or len(p_id) == 0:
+        return USER_ADD_FAILED
+    
+    meds = []
+    for k in request.form:
+        if 'med_name' in k:
+            if len(request.form[k]) == 0:
+                return USER_ADD_FAILED
+            meds.append(request.form[k])
+    
+    dosages = []
+    for i in range(1,len(meds)+1):
+        cur_day = 'days' + str(i)
+        cur_time = 'times' + str(i)
+        dosage = dict({'days': [], 'times': []})
+        if cur_day + 'ALL' in request.form:
+            dosage['days'].extend(hp.all_days)
+        else:
+            for k in request.form:
+                if cur_day in k:
+                    if request.form[k] is None or request.form[k] == '':
+                        return USER_ADD_FAILED
+                    dosage['days'].append(k[len(cur_day):])
+            
+        for k in request.form:
+            if cur_time in k:
+                if request.form[k] is None or request.form[k] == '':
+                    return USER_ADD_FAILED
+                dosage['times'].append(request.form[k])
+        dosages.append(dosage)
     
     cur_session = Session()
     m_ids = [hp.keygen(cur_session, Medication, Medication.med_id) for i in range(len(meds))]
@@ -185,6 +215,7 @@ def create_user(make_new_user=True):
                     User.user_id == cur_user.user_id).first()
     
         if prev_user is not None:
+            cur_session.close()
             return USER_ALREADY_EXISTS
     
         cur_session.add(cur_user)
@@ -197,6 +228,34 @@ def create_user(make_new_user=True):
         return USER_ADD_SUCCESS
     return MEDICINE_ADD_SUCCESS
 
+@app.route('/remove_user', methods=['POST', 'OPTIONS'])
+def remove_user():
+    if request.method == 'OPTIONS':
+        return handle_preflight()
+    
+    u_id = hp.read_user_id(request.form['u_id'])
+    
+    cur_session = Session()
+    cur_user = cur_session.query(User).filter(User.user_id == u_id).first()
+    
+    if len(u_id) == 0 or cur_user is None:
+        cur_session.close()
+        return USER_DOES_NOT_EXIST
+    
+    cur_session.query(Install).filter(Install.user_id == u_id).delete()
+    cur_session.query(User).filter(User.user_id == u_id).delete()
+    meds = cur_session.query(Medication).filter(Medication.user_id == u_id).all()
+    
+    for med in meds:
+        cur_session.query(Intake).filter(Intake.med_id == med.med_id).delete()
+        cur_session.query(Dosage).filter(Dosage.dosage_id == med.dosage_id).delete()
+        cur_session.delete(med)
+    
+    
+    cur_session.commit()
+    cur_session.close()
+    
+    return DELETE_SUCCESS
 
 @app.route('/add_medicine', methods=['POST'])
 def add_medicine():
@@ -208,7 +267,6 @@ def get_patient_list():
     cur_session = Session()
     
     patient_list = cur_session.query(User).all()
-    cur_session.commit()
     cur_session.close()
     
     ret = []
@@ -217,9 +275,12 @@ def get_patient_list():
     
     return (jsonify(ret), 200)
 
-@app.route('/get_medicine_data', methods=['GET'])
+@app.route('/get_medicine_data', methods=['GET', 'OPTIONS'])
 def get_medicine_data():
-    u_id = request.headers['User-Id']
+    if request.method == 'OPTIONS':
+        return handle_preflight()
+    
+    u_id = hp.read_user_id(request.headers['User-Id'])
     st_date = request.args.get('start_date', None)
     end_date = request.args.get('end_date', None)
     
@@ -257,7 +318,6 @@ def get_medicine_data():
                           'intake_status': intake.intake_status}
             ret['intakes'].append(cur_intake)
     
-    cur_session.commit()
     cur_session.close()
     
     return (jsonify(ret), 200)
@@ -285,9 +345,6 @@ def create_intake():
     return INTAKE_ADD_SUCCESS
     
 
-
-    
-
 @app.route('/get_install/', methods=['GET'])
 def get_install():
     cur_session = Session()
@@ -303,7 +360,7 @@ def get_install():
         
     return (ret, 200)
 
-@app.route('/remove_install/', methods=['DELETE'])
+@app.route('/remove_install', methods=['DELETE'])
 def remove_install():
     cur_session = Session()
     cur_installs = hp.query_installs(request, cur_session)
@@ -319,4 +376,17 @@ def remove_install():
     
     return DELETE_SUCCESS
     
-    
+
+@app.after_request
+def decorate_response(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response
+
+def handle_preflight():
+    resp = Flask.response_class('')
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    resp.headers['Access-Control-Allow-Headers'] = 'User-Id'
+    resp.headers['Content-Type'] = 'text/html'
+    return resp
+

@@ -125,7 +125,7 @@ def upload_sensor_readings():
         s_type = int(fields[1])
         
         if s_type == 2:
-            ret_touch.append((float(fields[4]), int(fields[5])))
+            ret_touch.append((float(fields[4]), float(fields[5])))
             continue
         
         m_id = int(fields[2])
@@ -135,7 +135,7 @@ def upload_sensor_readings():
         ret[d_type, s_type, 1].append(float(cur_readings[1]))
         ret[d_type, s_type, 2].append(float(cur_readings[2]))
         
-        ret_tim[d_type, s_type].append(int(fields[5]))
+        ret_tim[d_type, s_type].append(float(fields[5]))
         sensor_readings.append(SensorReading(user_id=u_id, 
                                              med_id=m_id,
                                              data=fields[0] + '`' + fields[1] + '`' + fields[4] + '`' + fields[5]))

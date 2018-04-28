@@ -36,8 +36,17 @@ class PredictionService():
         
         
     @staticmethod
-    def predict(medicine_id, user_id, data, time):
+    def predict(medicine_id, user_id, data, cap_data, time):
+        '''
+        medicine_id : 
+        user_id:
+        data: nd array. data from accel,gyro.  
+        cap_data = list of tuples [(state, timestamp)]
+        time : start time of data window. To be stored in database if predicted
+        '''        
+        
         # check if prediction to be done based on status. 
+        PredictionService.helper.logger.debug('Prediction initiated for medicine : %s', medicine_id)
         if not PredictionService.is_predicted(medicine_id, time):
             data = np.array([data])
             features = extract_features(data)

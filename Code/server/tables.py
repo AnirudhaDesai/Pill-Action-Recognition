@@ -18,9 +18,9 @@ Base = declarative_base()
 class Install(Base):
     __tablename__ = 'installs'
     
-    user_id = Column(String(25))
-    push_id = Column(String(25))
-    install_id = Column(String(25), primary_key=True)
+    user_id = Column(String(100))
+    push_id = Column(String(200))
+    install_id = Column(String(100), primary_key=True)
     
     def __repr__(self):
         return '<Install(user_id="%s", push_id="%s", install_id="%s")>' % (
@@ -31,8 +31,8 @@ class Install(Base):
 class User(Base):
     __tablename__ = 'users'
     
-    user_id = Column(String(25), primary_key=True)
-    patient_id = Column(String(25))
+    user_id = Column(String(100), primary_key=True)
+    patient_id = Column(String(100))
     
     def __repr__(self):
         return '<User(user_id="%s", patient_id="%s")>' % (
@@ -43,9 +43,9 @@ class User(Base):
 class Medication(Base):
     __tablename__ = 'medications'
     
-    user_id = Column(String(25))
+    user_id = Column(String(100))
     med_id = Column(Integer, primary_key=True)
-    med_name = Column(String(25))
+    med_name = Column(String(100))
     dosage_id = Column(Integer)
     
     def __repr__(self):
@@ -105,7 +105,7 @@ class SensorReading(Base):
     __tablename__ = 'sensorreadings'
     
     reading_id = Column(Integer, primary_key=True)
-    user_id = Column(String(25))
+    user_id = Column(String(100))
     med_id = Column(Integer)
     data = Column(String(100))
     

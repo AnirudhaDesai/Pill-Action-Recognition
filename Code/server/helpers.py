@@ -13,7 +13,7 @@ from tables import Install, Medication
 from pyfcm import FCMNotification
 import configparser
 from hashlib import sha256 as sha2
-
+import copy
 
 class Helpers:
     def __init__(self,flask_app):
@@ -156,8 +156,22 @@ class Helpers:
 
     # Is there a better way to do this?
     def get_clean_data_array(self, shape):
-        ret = np.zeros(shape, dtype=np.object)
-        ret.fill([])
+        
+#        ret = np.empty(shape, dtype=object)
+        # This has problems : https://stackoverflow.com/questions/33983053/how-to-create-a-numpy-array-of-lists
+#        ret.fill([])
+        '''
+        IMPORTANT! The first element (index 0) will be None. Use lists starting from 1
+        '''
+        
+        linear_size = 1
+        for s in shape:
+            linear_size *= s
+        ret = np.empty((linear_size,), dtype=object)    
+        for i,v in enumerate(ret):
+            ret[i] = list([])        
+        # finally, reshape the matrix
+        ret = ret.reshape(shape)
         return ret
     
     def read_user_id(self, u_id):

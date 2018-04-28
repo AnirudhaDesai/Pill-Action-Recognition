@@ -125,7 +125,7 @@ def upload_sensor_readings():
         s_type = int(fields[1])
         
         if s_type == 2:
-            ret_touch.append((float(fields[4]), float(fields[5])))
+            ret_touch.append((int(fields[4]), int(fields[5])))
             continue
         
         m_id = int(fields[2])
@@ -144,7 +144,6 @@ def upload_sensor_readings():
     async_executor.submit(Q_service.enqueue, ret, ret_tim, ret_touch, m_id, u_id)
     print('Spawned new thread for async call, now back to original thread', threading.current_thread())
     
-    
     cur_session = Session()
     cur_session.add_all(sensor_readings)
     cur_session.commit()
@@ -152,7 +151,6 @@ def upload_sensor_readings():
     
     return DATA_ADD_REQUEST_COMPLETE
     
-
 @app.route('/', methods=['GET'])
 def index():
     return render_template('homepage.html')

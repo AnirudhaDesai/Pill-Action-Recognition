@@ -13,6 +13,7 @@ objects, all methods to be kept static.
 import threading
 from collections import defaultdict
 from prediction_service import PredictionService
+import copy
 
 
 SLIDE_WINDOW = 1 * 1000   # number of milliseconds to slide 
@@ -34,19 +35,7 @@ def get_index(ar, val1, val2=1e50):
                 break
     
     return idx1, idx2
-def get_cap_idx(touch_data, val1, val2=1e50):
-    '''
-    touch_data : tuple of the form (touch_state, timestamp)    
-    '''
-    idx1, idx2 = len(touch_data), len(touch_data)
-    for i in range(len(touch_data)):
-        state, ts = touch_data[i]
-        if ts > val1:
-            idx1 = min(idx1, i)
-            if ts > val2:
-                idx2 = i
-                break
-    return idx1, idx2
+
 def default_fill(tupl):
     return Q_service.helper.get_clean_data_array(tupl)
 
@@ -81,24 +70,37 @@ class Q_service:
         Q_service.helper.logger.debug('Executing Q_service on thread : %s', str(threading.current_thread()))
         D,S,A = Q_service.med_data[medicine_id].shape
         Q_service.med_touches[medicine_id].extend(touches)
-        
+        print("input data : ", data)
         cur_data = Q_service.med_data[medicine_id]
         cur_tims = Q_service.med_timestamps[medicine_id]
         for d in range(D):
             for s in range(S):
+                Q_service.helper.logger.debug('d,s, cur_tims[d,s], tims[d,s] :%s,%s   %s --- %s', d,s,str(cur_tims[d,s]), str(tims[d,s]))
+                
+#                ts_list = copy.deepcopy(cur_tims[d,s])
+#                print(ts_list)
+#                ts_list.extend(tims[d,s])
+                cur_tims[d,s].extend(copy.deepcopy(tims[d,s]))
+#                print(ts_list)
+#                cur_tims[d,s] = copy.deepcopy(ts_list)
                 for a in range(A):
-                    cur_data[d,s,a].extend(data[d,s,a])
-                    cur_tims[d,s].extend(tims[d,s])
+                    
+#                    ts_list = copy.deepcopy(cur_data[d,s,a])
+#                    ts_list.extend(data[d,s,a])
+#                    cur_data[d,s,a] = copy.deepcopy(ts_list)
+                    cur_data[d,s,a].extend(copy.deepcopy(data[d,s,a]))
+                    print('cur data : ', cur_data )
+        
+        print(Q_service.med_data[medicine_id])
+                    
                     
         # check if timestamp duration is sufficient for prediction. 
         # Using 0,0 for reference
         
         start = cur_tims[0,0][0]
-#        end = cur_tims[0,0][-1]
-#        Q_service.helper.logger.debug('Med id data : %s', str(Q_service.med_data[medicine_id]))
         
         if Q_service.check_data_for_dispatch(medicine_id):
-            
+                
             Q_service.dispatch(medicine_id,user_id, start)
         
 
@@ -107,8 +109,8 @@ class Q_service:
         cur_tims = Q_service.med_timestamps[medicine_id]
         start = cur_tims[0,0][0]
         end = cur_tims[0,0][-1]
-        Q_service.helper.logger.debug('(medicine_id, delta_T) : (%s, %s)',\
-                        str(medicine_id),str(end - start))
+        Q_service.helper.logger.debug('start, end (medicine_id, delta_T) :%s, %s (%s, %s)',\
+                        start, end, str(medicine_id),str(end - start))
         if end-start > T_WINDOW:
             return True
         else:
@@ -118,6 +120,7 @@ class Q_service:
         
         Q_service.helper.logger.debug('Dispatch initiated for medicine id: %s', str(med_id))
         total_data = Q_service.med_data[med_id]
+        print("total_data : ",total_data)
         times = Q_service.med_timestamps[med_id]
         touches = Q_service.med_touches[med_id]
         
@@ -126,11 +129,11 @@ class Q_service:
         
         dispatch_data = Q_service.helper.get_clean_data_array((D,S,A))
         disp_cap_data = []
-        Q_service.helper.logger.debug("D,S,A : %s, %s, %s", D,S,A)
+        
         for d in range(D):
             for s in range(S):
                 s_time = times[d,s][0]
-               
+                Q_service.helper.logger.debug("s_time, d,s,times[d,s] :%s,%s, %s, %s", s_time, d, s, times[d,s])
                 del_idx, send_idx = get_index(times[d,s], s_time + SLIDE_WINDOW, s_time + T_WINDOW)
                 
                 if send_idx == 0:
@@ -138,15 +141,16 @@ class Q_service:
                     return
                                     
                 for a in range(A):
+#                    Q_service.helper.logger.debug("sensor data del_idx, send_idx : %s, %s", del_idx, send_idx)
                     
-                    dispatch_data[d,s,a].extend(total_data[d,s,a][:send_idx-1])
+                    dispatch_data[d,s,a] = copy.deepcopy(total_data[d,s,a][:send_idx-1])
                     Q_service.med_data[med_id][d,s,a] = Q_service.med_data[med_id][d,s,a][del_idx:]
                     
                 Q_service.med_timestamps[med_id][d,s] = Q_service.med_timestamps[med_id][d,s][del_idx:]
-        Q_service.helper.logger.debug("sensor data del_idx, send_idx : %s, %s", del_idx, send_idx)
+        
         # Optimize this later
         touch_ts = [k[1] for k in touches]      # timestamps extracted from list of tuples
-        Q_service.helper.logger.debug('Calling predict for medicine id : %s ', str(touch_ts))
+        Q_service.helper.logger.debug('Calling predict for medicine id : %s ', str(dispatch_data))
         del_idx, send_idx = get_index(touch_ts, touches[0][1] + SLIDE_WINDOW, touches[0][1] + T_WINDOW)
         if send_idx == 0:
             Q_service.helper.logger.debug('Not enough capacitive data to dispatch!')

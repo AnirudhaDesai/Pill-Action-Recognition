@@ -77,17 +77,9 @@ class Q_service:
             for s in range(S):
                 Q_service.helper.logger.debug('d,s, cur_tims[d,s], tims[d,s] :%s,%s   %s --- %s', d,s,str(cur_tims[d,s]), str(tims[d,s]))
                 
-#                ts_list = copy.deepcopy(cur_tims[d,s])
-#                print(ts_list)
-#                ts_list.extend(tims[d,s])
                 cur_tims[d,s].extend(copy.deepcopy(tims[d,s]))
-#                print(ts_list)
-#                cur_tims[d,s] = copy.deepcopy(ts_list)
                 for a in range(A):
                     
-#                    ts_list = copy.deepcopy(cur_data[d,s,a])
-#                    ts_list.extend(data[d,s,a])
-#                    cur_data[d,s,a] = copy.deepcopy(ts_list)
                     cur_data[d,s,a].extend(copy.deepcopy(data[d,s,a]))
                     print('cur data : ', cur_data )
         
@@ -124,7 +116,6 @@ class Q_service:
         times = Q_service.med_timestamps[med_id]
         touches = Q_service.med_touches[med_id]
         
-        
         D,S,A = Q_service.med_data[med_id].shape
         
         dispatch_data = Q_service.helper.get_clean_data_array((D,S,A))
@@ -132,6 +123,8 @@ class Q_service:
         
         for d in range(D):
             for s in range(S):
+                if (len(times[d,s]) == 0):  # no data for this sensor 
+                    continue
                 s_time = times[d,s][0]
                 Q_service.helper.logger.debug("s_time, d,s,times[d,s] :%s,%s, %s, %s", s_time, d, s, times[d,s])
                 del_idx, send_idx = get_index(times[d,s], s_time + SLIDE_WINDOW, s_time + T_WINDOW)
@@ -141,16 +134,18 @@ class Q_service:
                     return
                                     
                 for a in range(A):
-#                    Q_service.helper.logger.debug("sensor data del_idx, send_idx : %s, %s", del_idx, send_idx)
                     
                     dispatch_data[d,s,a] = copy.deepcopy(total_data[d,s,a][:send_idx-1])
                     Q_service.med_data[med_id][d,s,a] = Q_service.med_data[med_id][d,s,a][del_idx:]
-                    
+                    Q_service.helper.logger.debug("sensor data del_idx, send_idx : %s, %s", del_idx, send_idx)
+                
                 Q_service.med_timestamps[med_id][d,s] = Q_service.med_timestamps[med_id][d,s][del_idx:]
+                print(Q_service.med_data[med_id])    
         
+        Q_service.helper.logger.debug('Calling predict for medicine id : %s ', str(dispatch_data))
         # Optimize this later
         touch_ts = [k[1] for k in touches]      # timestamps extracted from list of tuples
-        Q_service.helper.logger.debug('Calling predict for medicine id : %s ', str(dispatch_data))
+        
         del_idx, send_idx = get_index(touch_ts, touches[0][1] + SLIDE_WINDOW, touches[0][1] + T_WINDOW)
         if send_idx == 0:
             Q_service.helper.logger.debug('Not enough capacitive data to dispatch!')

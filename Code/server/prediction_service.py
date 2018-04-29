@@ -49,13 +49,17 @@ class PredictionService():
         PredictionService.helper.logger.debug('Prediction initiated for medicine : %s', medicine_id)
         if not PredictionService.is_predicted(medicine_id, time):
             data = np.array([data])
+            PredictionService.helper.logger.debug('Starting Feature Extraction : %s', str(data))
+                        
             features = extract_features(data)
+            PredictionService.helper.logger.debug('Starting Feature Extraction : %s', str(data))
+            p_twist = PredictionService.m_twist.predict(features[0])[0]
+            p_dispense = PredictionService.m_dispense.predict(features[0])[0]
+            p_h2m = PredictionService.m_h2m.predict(features[0])[0]
+            p_w2m = PredictionService.m_w2m.predict(features[0])[0]
             
-            p_twist = PredictionService.m_twist.predict(features)[0]
-            p_dispense = PredictionService.m_dispense.predict(features)[0]
-            p_h2m = PredictionService.m_h2m.predict(features)[0]
-            p_w2m = PredictionService.m_w2m.predict(features)[0]
-            
+            PredictionService.helper.logger.debug('Prediction results (twist, dispense, h2m, w2m) : (%s,%s,%s,%s)', \
+                    p_twist, p_dispense, p_h2m, p_w2m)
             net_pred = p_twist + p_dispense + p_h2m + p_w2m
             
             if net_pred >= 2:

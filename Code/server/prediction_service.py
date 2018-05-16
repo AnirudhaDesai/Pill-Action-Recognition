@@ -44,19 +44,18 @@ class PredictionService():
         cap_data = list of tuples [(state, timestamp)]
         time : start time of data window. To be stored in database if predicted
         '''        
-        
         # check if prediction to be done based on status. 
         PredictionService.helper.logger.debug('Prediction initiated for medicine : %s', medicine_id)
         if not PredictionService.is_predicted(medicine_id, time):
             data = np.array([data])
-            PredictionService.helper.logger.debug('Starting Feature Extraction : %s', str(data))
+            #PredictionService.helper.logger.debug('Starting Feature Extraction : %s', str(data))
                         
             features = extract_features(data)
-            PredictionService.helper.logger.debug('Starting Feature Extraction : %s', str(data))
-            p_twist = PredictionService.m_twist.predict(features[0])[0]
-            p_dispense = PredictionService.m_dispense.predict(features[0])[0]
-            p_h2m = PredictionService.m_h2m.predict(features[0])[0]
-            p_w2m = PredictionService.m_w2m.predict(features[0])[0]
+            #PredictionService.helper.logger.debug('Starting Feature Extraction : %s', str(data))
+            p_twist = PredictionService.m_twist.predict(features[4])[0]
+            p_dispense = PredictionService.m_dispense.predict(features[4])[0]
+            p_h2m = PredictionService.m_h2m.predict(features[4])[0]
+            p_w2m = PredictionService.m_w2m.predict(features[4])[0]
             
             PredictionService.helper.logger.debug('Prediction results (twist, dispense, h2m, w2m) : (%s,%s,%s,%s)', \
                     p_twist, p_dispense, p_h2m, p_w2m)
@@ -74,10 +73,13 @@ class PredictionService():
                     for install in installs:
                         push_ids.append(install.push_id)
                     
+                    print('True Intake Detected, Sending push notification to ', len(push_ids), ' Devices!!')
                     PredictionService.helper.send_push_notification(push_ids, 
-                                                                    'Intake detected for - user: ' + user_id + ', medicine: ' + meds.m_name)
+                                                                    {'message': 'Intake detected for - user: ' + user_id + ', medicine: ' + meds.med_name})
                     # update medicine prediction status
                     PredictionService.set_status(PredictionService.helper.STATUS_YES, medicine_id, time)
+                    PredictionService.helper.logger.debug('Push Notification sent successfully!!')
+                    cur_session.close()
                     
     @staticmethod
     def is_predicted(med_id, time):

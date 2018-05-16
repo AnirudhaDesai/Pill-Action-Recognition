@@ -146,11 +146,21 @@ class Helpers:
             self.logger.debug('No registration ids to send push notification to')
             return
         if len(reg_id_list) == 1:
-            result = self.push_service.single_device_data_message(registration_id=reg_id_list[0],
+            self.logger.debug('Making call to FCM for single Data Message...')
+            try:
+                result = self.push_service.single_device_data_message(registration_id=reg_id_list[0],
                                                                   data_message=data_message)
+            except Exception as e:
+                self.logger.debug(e)
+                return None
         else:
-            result = self.push_service.multiple_devices_data_message(registration_ids=reg_id_list,
+            self.logger.debug('Making call to FCM for multiple Data Messages...')
+            try:
+                result = self.push_service.multiple_devices_data_message(registration_ids=reg_id_list,
                                                                      data_message=data_message)
+            except Exception as e:
+                self.logger.debug(e)
+                return None
 
         return result
 
@@ -180,5 +190,5 @@ class Helpers:
         
         algorithm = sha2()
         algorithm.update(u_id.encode())
-        return algorithm.hexdigest()
+        return algorithm.hexdigest().upper()
         

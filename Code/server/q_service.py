@@ -70,18 +70,16 @@ class Q_service:
         Q_service.helper.logger.debug('Executing Q_service on thread : %s', str(threading.current_thread()))
         D,S,A = Q_service.med_data[medicine_id].shape
         Q_service.med_touches[medicine_id].extend(touches)
-        print("input data : ", data)
         cur_data = Q_service.med_data[medicine_id]
         cur_tims = Q_service.med_timestamps[medicine_id]
         for d in range(D):
             for s in range(S):
-                Q_service.helper.logger.debug('d,s, cur_tims[d,s], tims[d,s] :%s,%s   %s --- %s', d,s,str(cur_tims[d,s]), str(tims[d,s]))
+                #Q_service.helper.logger.debug('d,s, cur_tims[d,s], tims[d,s] :%s,%s   %s --- %s', d,s,str(cur_tims[d,s]), str(tims[d,s]))
                 
                 cur_tims[d,s].extend(copy.deepcopy(tims[d,s]))
                 for a in range(A):
                     
                     cur_data[d,s,a].extend(copy.deepcopy(data[d,s,a]))
-                    print('cur data : ', cur_data )
         
         print(Q_service.med_data[medicine_id])
                     
@@ -90,9 +88,7 @@ class Q_service:
         # Using 0,0 for reference
         
         start = cur_tims[0,0][0]
-        
         if Q_service.check_data_for_dispatch(medicine_id):
-                
             Q_service.dispatch(medicine_id,user_id, start)
         
 
@@ -112,7 +108,6 @@ class Q_service:
         
         Q_service.helper.logger.debug('Dispatch initiated for medicine id: %s', str(med_id))
         total_data = Q_service.med_data[med_id]
-        print("total_data : ",total_data)
         times = Q_service.med_timestamps[med_id]
         touches = Q_service.med_touches[med_id]
         
@@ -142,7 +137,7 @@ class Q_service:
                 Q_service.med_timestamps[med_id][d,s] = Q_service.med_timestamps[med_id][d,s][del_idx:]
                 print(Q_service.med_data[med_id])    
         
-        Q_service.helper.logger.debug('Calling predict for medicine id : %s ', str(dispatch_data))
+        #Q_service.helper.logger.debug('Calling predict for medicine id : %s ', str(dispatch_data))
         # Optimize this later
         touch_ts = [k[1] for k in touches]      # timestamps extracted from list of tuples
         

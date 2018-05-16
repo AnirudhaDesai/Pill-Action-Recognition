@@ -66,9 +66,9 @@ def extract_features(id_data):
                             sub_features = np.hstack((sub_features, np.real(bf(fbody))))
                 if l == 0:
                     base_features = np.vstack((base_features, sub_features))
-                elif l == 1:
+                elif L == 3 and l == 1:
                     cap_features = np.vstack((cap_features, sub_features))
-                elif l == 2:
+                elif (L == 3 and l == 2) or (L == 2 and l == 1):
                     wear_features = np.vstack((wear_features, sub_features))
             feature_row = np.asarray(feature_row)
             features = np.vstack((features, feature_row))
@@ -81,9 +81,12 @@ def extract_features(id_data):
     base_features = base_features[1:]
     cap_features = cap_features[1:]
     wear_features = wear_features[1:]
-    base_wear_features = np.vstack((base_features, wear_features))
-    cap_wear_features = np.vstack((cap_features, wear_features))
-    print ("Feature extraction complete..", cap_wear_features)  
+    base_wear_features = np.hstack((base_features, wear_features))
+    if L == 3:
+        cap_wear_features = np.hstack((cap_features, wear_features))
+    else:
+        cap_wear_features = None
+    print ("Feature extraction complete..")
     return (features, base_features, 
             cap_features, 
             wear_features, 
@@ -99,7 +102,7 @@ if __name__ == '__main__':
     
     print('Loaded file')
     id_data = np.asarray(datafiles['arr_0'])
-    features, base_features, cap_features, wear_features, cap_wear_features, base_wear_features = extract_features(id_data)
+    features, base_features, cap_features, wear_features, base_wear_features, cap_wear_features = extract_features(id_data)
     
     print('Saving Files..')  
     

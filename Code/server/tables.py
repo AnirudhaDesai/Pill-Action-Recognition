@@ -18,9 +18,9 @@ Base = declarative_base()
 class Install(Base):
     __tablename__ = 'installs'
     
-    user_id = Column(String(100))
     push_id = Column(String(200))
     install_id = Column(String(100), primary_key=True)
+    user_id = Column(String(100), primary_key=True)
     
     def __repr__(self):
         return '<Install(user_id="%s", push_id="%s", install_id="%s")>' % (

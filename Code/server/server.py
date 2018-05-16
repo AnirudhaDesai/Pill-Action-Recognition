@@ -51,7 +51,7 @@ Q_service.start_service(hp)
 
 # Standard responses
 ENTRY_NOT_FOUND = ('', 204)
-DEVICE_ALREADY_REGISTERED = ('Device already registered with same push_id', 500)
+DEVICE_ALREADY_REGISTERED = ('Device already registered with same push_id', 200)
 DELETE_SUCCESS = ('Deletion complete', 200)
 USER_ALREADY_EXISTS = ('Patient already exists with same patient Id', 500)
 USER_ADD_SUCCESS = ('Patient Added Successfully', 201)
@@ -86,7 +86,7 @@ def sign_in():
 def reg_device():
     p_id = request.form['push_id']
     i_id = request.headers['Install-Id']
-    u_id = hp.read_user_id(request.headers['User-Id'])
+    u_id = request.headers['User-Id']
     
     cur_install = Install(user_id=u_id, push_id=p_id, install_id=i_id)
     cur_session = Session()
@@ -96,6 +96,8 @@ def reg_device():
                     ).first()
     
     if prev_install is None:
+        cur_session.add(cur_install)
+    elif prev_install.user_id != cur_install.user_id:
         cur_session.add(cur_install)
     elif prev_install.push_id == cur_install.push_id:
         return DEVICE_ALREADY_REGISTERED
@@ -111,7 +113,7 @@ def reg_device():
 
 @app.route('/upload_sensor_readings', methods = ['POST'])
 def upload_sensor_readings():
-    u_id = hp.read_user_id(request.headers['User-Id'])
+    u_id = request.headers['User-Id']
     
     data = request.get_json()
     ret = hp.get_clean_data_array((2,2,3))
@@ -162,6 +164,7 @@ def create_user(make_new_user=True):
         return handle_preflight()
     
     u_id = hp.read_user_id(request.form['u_id'])
+    print('User-Id = ' + u_id)
     p_id = request.form['p_id']
     
     if len(u_id) == 0 or len(p_id) == 0:
@@ -278,7 +281,14 @@ def get_medicine_data():
     if request.method == 'OPTIONS':
         return handle_preflight()
     
-    u_id = hp.read_user_id(request.headers['User-Id'])
+    cur_session = Session()
+    if 'User-Id' in request.headers:
+        u_id = request.headers['User-Id']
+    else:
+        p_id = request.headers['Patient-Id']
+        u_id = cur_session.query(User).filter(
+                User.patient_id == p_id
+                ).first().user_id
     st_date = request.args.get('start_date', None)
     end_date = request.args.get('end_date', None)
     
@@ -286,7 +296,6 @@ def get_medicine_data():
         st_date = dateparser.parse(st_date)
         end_date = dateparser.parse(end_date)
     
-    cur_session = Session()
     meds = cur_session.query(Medication).filter(Medication.user_id == u_id).all()
     
     ret = {'medicines': [], 'dosages': [], 'intakes': []}
@@ -384,7 +393,7 @@ def handle_preflight():
     resp = Flask.response_class('')
     resp.headers['Access-Control-Allow-Origin'] = '*'
     resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-    resp.headers['Access-Control-Allow-Headers'] = 'User-Id'
+    resp.headers['Access-Control-Allow-Headers'] = 'User-Id, Patient-Id'
     resp.headers['Content-Type'] = 'text/html'
     return resp
 

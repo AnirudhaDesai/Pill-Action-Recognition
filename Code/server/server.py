@@ -11,6 +11,7 @@ from flask import make_response
 import auth as au
 from helpers import Helpers
 from dateutil import parser as dateparser
+from datetime import datetime, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from tables import Install, User, Medication, Dosage, Intake, SensorReading, Base
@@ -46,7 +47,7 @@ sql_engine = create_engine('mysql+pymysql://amitrc:preparetest@localhost:3306/te
                            echo=True)
 Session = sessionmaker(bind=sql_engine)
 Base.metadata.create_all(sql_engine)
-PredictionService.start_service(Session, hp, '../../model/')
+PredictionService.start_service(Session, hp)
 Q_service.start_service(hp)
 
 # Standard responses
@@ -60,6 +61,7 @@ USER_DOES_NOT_EXIST = ('The specified patient does not exist', 400)
 MEDICINE_ADD_SUCCESS = ('Medicines Added Successfully', 201)
 INTAKE_ADD_SUCCESS = ('Intake info Added Successfully', 201)
 DATA_ADD_REQUEST_COMPLETE = ('Successfully raised data add request', 201)
+CONFIG_RESET_SUCCESS = ('Successfully reset config file', 200)
 
 
 @app.route('/sign_in', methods = ['POST'])
@@ -204,7 +206,8 @@ def create_user(make_new_user=True):
         
     cur_meds = [Medication(user_id=u_id, med_id=m_ids[i], 
                            med_name=meds[i], 
-                           dosage_id=d_ids[i]) for i in range(len(meds))]
+                           dosage_id=d_ids[i],
+                           validation_date=(datetime.now()-timedelta(days=1)).isoformat()) for i in range(len(meds))]
     cur_dosages = [Dosage(dosage_id=d_ids[i], 
                           days=hp.stringify(dosages[i]['days']), 
                           times=hp.stringify(dosages[i]['times'])
@@ -312,6 +315,7 @@ def get_medicine_data():
                     'times': dose.get_times()}
         ret['dosages'].append(cur_dose)
         
+        hp.validate_intakes(med, dose, cur_session)
         intakes = cur_session.query(Intake).filter(Intake.med_id == med.med_id).all()
         for intake in intakes:
             if st_date is not None:
@@ -345,7 +349,13 @@ def create_intake():
                         intake_status=i_status)
     
     cur_session = Session()
-    cur_session.add(cur_intake)
+    prev_intake = cur_session.query(Intake).filter(Intake.med_id == m_id).filter(Intake.planned_date == p_date).first()
+    
+    if prev_intake is not None:
+        prev_intake.actual_date = cur_intake.actual_date
+        prev_intake.intake_status = cur_intake.intake_status
+    else:
+        cur_session.add(cur_intake)
     cur_session.commit()
     cur_session.close()
     
@@ -382,7 +392,14 @@ def remove_install():
     cur_session.close()
     
     return DELETE_SUCCESS
-    
+
+@app.route('/reset_config', methods=['POST'])
+def reset_config():
+    global hp
+    hp = Helpers(app)
+    Q_service.start_service(hp)
+    PredictionService.start_service(Session, hp)
+    return CONFIG_RESET_SUCCESS
 
 @app.after_request
 def decorate_response(response):

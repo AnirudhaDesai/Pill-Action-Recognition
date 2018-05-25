@@ -8,12 +8,14 @@ import requests
 
 import json
 import numpy as np
-import os
-from tables import Install, Medication
+from tables import Install, Medication, Intake
 from pyfcm import FCMNotification
-import configparser
 from hashlib import sha256 as sha2
-import copy
+from dateutil import parser
+from datetime import datetime, timedelta
+
+
+CONFIG_PATH = '../config.json'
 
 class Helpers:
     def __init__(self,flask_app):
@@ -25,14 +27,14 @@ class Helpers:
         self.all_days = ['Monday', 'Tuesday', 
                          'Wednesday', 'Thursday', 
                          'Friday', 'Saturday', 'Sunday']
-        self.load_config()        
-    
-    def load_config(self):
-        config = configparser.ConfigParser()
-        cp = os.path.join(os.path.dirname(__file__),"./")
-        configPath = cp + 'server_config.ini'
-        config.read(configPath)
-        self.client_id = config['Basic']['client_id']
+        self.config = json.load(open(CONFIG_PATH))
+        self.client_id = self.get_config('basic', 'client_id')        
+        
+    def get_config(self, *args):
+        ret = self.config
+        for i in range(len(args)):
+            ret = ret[args[i]]
+        return ret
 
     def build_url(self,addr,*args):
         '''
@@ -191,4 +193,50 @@ class Helpers:
         algorithm = sha2()
         algorithm.update(u_id.encode())
         return algorithm.hexdigest().upper()
+    
+    def validate_intakes(self, med, dose, cur_session):
+        # Oh boy...
+        validation_date = parser.parse(med.validation_date)
+        start_date = validation_date + timedelta(days=1)
+        med.validation_date = (datetime.now() - timedelta(days=1)).isoformat()
+        
+        intakes = cur_session.query(Intake).filter(Intake.med_id == med.med_id).filter(Intake.planned_date > validation_date).all()
+        ideal_intake_dates = self.get_ideal_intake_dates(dose, start_date)
+        intake_dates_present = set([parser.parse(x.planned_date) for x in intakes])
+        missed_intake_dates = [x for x in ideal_intake_dates if x not in intake_dates_present]
+        
+        missed_intakes = [Intake(med_id=med.med_id,
+                                 planned_date=x.isoformat(),
+                                 intake_status=3) for x in missed_intake_dates]
+        
+        cur_session.add_all(missed_intakes)
+        cur_session.commit()
+    
+    def get_ideal_intake_dates(self, dose, start_date):
+        ideal_intakes = []
+        
+        def get_prev_dosage_date(days, cur_date):
+            cur_day_idx = cur_date.weekday()
+            prev_day_idx = -1
+            for i in range(len(days)-1, -1, -1):
+                if days[i] < cur_day_idx:
+                    prev_day_idx = i
+                    break
+            prev_day_delta = (cur_day_idx-days[prev_day_idx]+7)%7
+            td = timedelta(days=prev_day_delta)
+            return cur_date - td
+        
+        dosage_days = [self.all_days.index(x) for x in dose.get_days()]
+        
+        ideal_times = [get_prev_dosage_date(dosage_days, 
+                                            parser.parse(tim)) for tim in dose.get_times()]
+        ideal_times.reverse()
+        while ideal_times[0].date() >= start_date.date():
+            ideal_intakes.extend(ideal_times)
+            ideal_times = [get_prev_dosage_date(dosage_days, 
+                                                tim) for tim in ideal_times]
+        
+        return reversed(ideal_intakes)
+        
+        
         

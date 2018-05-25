@@ -145,7 +145,7 @@ def test_create_intake():
     tim = tim - timedelta(days=TEST_DAYS_TO_GEN)
     
     intakes = []
-    for i in range(TEST_DAYS_TO_GEN - 1):
+    for i in range(TEST_DAYS_TO_GEN - 5):
         intakes.extend(generate_create_intake_data(tim + timedelta(days=i)))
     
     url = base_url + create_intake_endpoint
@@ -176,7 +176,7 @@ tests = [test_register_device,
          test_create_user, 
          test_get_medicine_data, 
          test_create_intake,
-         test_upload_sensor_readings]
+         test_upload_sensor_readings,
          test_remove_user]
 
 if __name__ == '__main__':

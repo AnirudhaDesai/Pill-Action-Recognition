@@ -1,0 +1,18 @@
+{
+  "name": "Pill-Action-Recognition",
+  "version": "0.0.0",
+  "basic": {
+    "client_id": "432854040486-616hjahmac61qt8e2k2g1r8u77c0oha6.apps.googleusercontent.com"
+  },
+  "queue": {
+    "time_window": 4000,
+    "slide_window": 1000
+  },
+  "model": {
+    "type": "Ensemble",
+    "features": ["base", "wear"],
+    "path": "../../model/",
+    "timeout": 300000,
+    "touch_threshold": 2000
+  }
+}

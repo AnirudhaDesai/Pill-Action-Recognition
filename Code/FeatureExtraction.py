@@ -6,6 +6,13 @@ Created long, long ago in a land far, far away.
 import numpy as np
 import FeatureExtractorUtils as fe
 
+FEATURE_ORDER = ['all',
+                 'base',
+                 'cap',
+                 'wear',
+                 'base_wear',
+                 'cap_wear']
+
 def extract_features(id_data):
     #print (id_data.shape)
     N,L,T,D = id_data.shape # N- id, L-sensor location, T- sensor Type, D - dim
@@ -87,11 +94,24 @@ def extract_features(id_data):
     else:
         cap_wear_features = None
     print ("Feature extraction complete..")
-    return (features, base_features, 
-            cap_features, 
-            wear_features, 
-            base_wear_features,
-            cap_wear_features)
+    
+    # Please don't question the code below
+    ret = ()
+    for feature_type in FEATURE_ORDER:
+        if feature_type == 'all':
+            ret += (features,)
+        elif feature_type == 'base':
+            ret += (base_features,)
+        elif feature_type == 'cap':
+            ret += (cap_features,)
+        elif feature_type == 'wear':
+            ret += (wear_features,)
+        elif feature_type == 'base_wear':
+            ret += (base_wear_features,)
+        elif feature_type == 'cap_wear':
+            ret += (cap_wear_features,)
+        
+    return ret
 
 
 if __name__ == '__main__':

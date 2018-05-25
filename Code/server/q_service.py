@@ -15,11 +15,6 @@ from collections import defaultdict
 from prediction_service import PredictionService
 import copy
 
-
-SLIDE_WINDOW = 1 * 1000   # number of milliseconds to slide 
-T_WINDOW = 4 * 1000      # Time window for dispatch (in milliseconds)
-
-
 # Get the indices for first number greater than val1 
 # and val2 in sorted array ar.
 # val2 is optional.
@@ -43,14 +38,19 @@ class Q_service:
     helper = None
     med_data = defaultdict(lambda : default_fill((2, 2, 3)))
     med_timestamps = defaultdict(lambda : default_fill((2, 2)))
-    med_touches = defaultdict(list)    
+    med_touches = defaultdict(list)  
+    T_WINDOW = None # Time window for dispatch (in milliseconds, set from config file) 
+    SLIDE_WINDOW = None # number of milliseconds to slide (set from config file)
     
     # This method is here but do not use.
     def __init__(self, hp):
         pass
+    
     @staticmethod 
     def start_service(hp):
         Q_service.helper = hp
+        Q_service.T_WINDOW = hp.get_config('queue', 'time_window')
+        Q_service.SLIDE_WINDOW = hp.get_config('queue', 'slide_window')
         
     @staticmethod
     def enqueue(data, 
@@ -99,7 +99,7 @@ class Q_service:
         end = cur_tims[0,0][-1]
         Q_service.helper.logger.debug('start, end (medicine_id, delta_T) :%s, %s (%s, %s)',\
                         start, end, str(medicine_id),str(end - start))
-        if end-start > T_WINDOW:
+        if end-start > Q_service.T_WINDOW:
             return True
         else:
             return False
@@ -110,6 +110,8 @@ class Q_service:
         total_data = Q_service.med_data[med_id]
         times = Q_service.med_timestamps[med_id]
         touches = Q_service.med_touches[med_id]
+        SLIDE_WINDOW = Q_service.SLIDE_WINDOW
+        T_WINDOW = Q_service.T_WINDOW
         
         D,S,A = Q_service.med_data[med_id].shape
         

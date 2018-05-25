@@ -47,6 +47,7 @@ class Medication(Base):
     med_id = Column(Integer, primary_key=True)
     med_name = Column(String(100))
     dosage_id = Column(Integer)
+    validation_date = Column(String(40))
     
     def __repr__(self):
         return '<Medication(med_id="%s", med_name="%s", user_id="%s", dosage="%s")>' % (

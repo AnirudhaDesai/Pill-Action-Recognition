@@ -123,7 +123,7 @@ class Q_service:
                 if (len(times[d,s]) == 0):  # no data for this sensor 
                     continue
                 s_time = times[d,s][0]
-                Q_service.helper.logger.debug("s_time, d,s,times[d,s] :%s,%s, %s, %s", s_time, d, s, times[d,s])
+                #Q_service.helper.logger.debug("s_time, d,s,times[d,s] :%s,%s, %s, %s", s_time, d, s, times[d,s])
                 del_idx, send_idx = get_index(times[d,s], s_time + SLIDE_WINDOW, s_time + T_WINDOW)
                 
                 if send_idx == 0:
@@ -137,8 +137,7 @@ class Q_service:
                     Q_service.helper.logger.debug("sensor data del_idx, send_idx : %s, %s", del_idx, send_idx)
                 
                 Q_service.med_timestamps[med_id][d,s] = Q_service.med_timestamps[med_id][d,s][del_idx:]
-                print(Q_service.med_data[med_id])    
-        
+                
         #Q_service.helper.logger.debug('Calling predict for medicine id : %s ', str(dispatch_data))
         # Optimize this later
         touch_ts = [k[1] for k in touches]      # timestamps extracted from list of tuples

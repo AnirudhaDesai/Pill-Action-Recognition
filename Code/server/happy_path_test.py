@@ -21,6 +21,8 @@ TEST_DATA_BATCH_LENGTH = 5 # in seconds
 TEST_DATA_RATE = 40 # in milliseconds
 TEST_MAC_ADDRESS = 'CA:95:82:BC:73:0A'
 MED_IDS = []
+DAYS = ['Monday', 'Tuesday', 'Wednesday', 
+        'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 
 base_url = 'http://localhost:5000'
@@ -106,19 +108,15 @@ def test_create_user():
     url = base_url + create_user_endpoint
     
     data = {'u_id': TEST_EMAIL, 'p_id': TEST_PATIENT_ID}
-    data['med_name_1'] = 'Raltegravir'
-    data['days1ALL'] = 'ON'
-    data['times1time1'] = '11:00'
-    data['times1time2'] = '15:00'
-    data['med_name_2'] = 'Truvada'
-    data['days2Monday'] = 'ON'
-    data['days2Wednesday'] = 'ON'
-    data['days2Friday'] = 'ON'
-    data['times2time1'] = '10:00'
-    data['times2time2'] = '13:00'
-    data['times2time3'] = '18:00'
+    data['med_names'] = ['Raltegravir', 'Truvada']
+    data['dosages'] = []
+    dosage1 = {'days': DAYS, 'times': ['11:00', '15:00']}
+    dosage2 = {'days': ['Monday', 'Wednesday', 'Friday'], 'times':['10:00', '13:00', '18:00']}
     
-    response = requests.post(url, data=data)
+    data['dosages'].append(dosage1)
+    data['dosages'].append(dosage2)
+    
+    response = requests.post(url, json=data)
     return response.text
 
 def test_get_medicine_data():
@@ -157,7 +155,7 @@ def test_create_intake():
 def test_remove_user():
     url = base_url + remove_user_endpoint
     
-    response = requests.post(url, data={'u_id': TEST_EMAIL})    
+    response = requests.post(url, data={'p_id': TEST_PATIENT_ID})    
     return response.text
 
 
@@ -176,8 +174,8 @@ tests = [test_register_device,
          test_create_user, 
          test_get_medicine_data, 
          test_create_intake,
-         test_upload_sensor_readings,
-         test_remove_user]
+         test_upload_sensor_readings,]
+         #test_remove_user]
 
 if __name__ == '__main__':
     for test in tests:

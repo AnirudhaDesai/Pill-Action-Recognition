@@ -9,7 +9,7 @@
     "slide_window": 1000
   },
   "model": {
-    "type": "Ensemble",
+    "type": "Touch",
     "features": ["base", "wear"],
     "path": "../../model/",
     "timeout": 300000,

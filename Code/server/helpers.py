@@ -135,6 +135,8 @@ class Helpers:
     def stringify(self, lst):
         ret = ''
         for s in lst:
+            if len(s) == 0:
+                continue
             ret += ',' + s
         return ret[1:]
     

@@ -59,9 +59,14 @@ USER_ADD_SUCCESS = ('Patient Added Successfully', 201)
 USER_ADD_FAILED = ('Failed to add patient', 400)
 USER_DOES_NOT_EXIST = ('The specified patient does not exist', 400)
 MEDICINE_ADD_SUCCESS = ('Medicines Added Successfully', 201)
+MEDICINE_ADD_FAILED = ('Medicine add failed', 400)
+MEDICINE_NOT_FOUND = ('Medicine does not exist', 400)
+MEDICINE_REMOVE_SUCCESS = ('Medicine removed successfully', 200)
 INTAKE_ADD_SUCCESS = ('Intake info Added Successfully', 201)
 DATA_ADD_REQUEST_COMPLETE = ('Successfully raised data add request', 201)
 CONFIG_RESET_SUCCESS = ('Successfully reset config file', 200)
+DOSAGE_ADD_FAILED = ('Failed to add/update dosage info', 400)
+DOSAGE_ADD_SUCCESS = ('Successfully added/updated dosage info', 201)
 
 
 @app.route('/sign_in', methods = ['POST'])
@@ -165,45 +170,39 @@ def create_user(make_new_user=True):
     if request.method == 'OPTIONS':
         return handle_preflight()
     
-    u_id = hp.read_user_id(request.form['u_id'])
-    print('User-Id = ' + u_id)
-    p_id = request.form['p_id']
+    req = request.get_json()
     
-    if len(u_id) == 0 or len(p_id) == 0:
-        return USER_ADD_FAILED
+    u_id = None
+    if make_new_user == True:
+        u_id = hp.read_user_id(req['u_id'])
+        if len(u_id) == 0:
+            return USER_ADD_FAILED
+        
+    p_id = req['p_id']
     
-    meds = []
-    for k in request.form:
-        if 'med_name' in k:
-            if len(request.form[k]) == 0:
-                return USER_ADD_FAILED
-            meds.append(request.form[k])
+    if len(p_id) == 0:
+        if make_new_user == True:
+            return USER_ADD_FAILED
+        return MEDICINE_ADD_FAILED
     
-    dosages = []
-    for i in range(1,len(meds)+1):
-        cur_day = 'days' + str(i)
-        cur_time = 'times' + str(i)
-        dosage = dict({'days': [], 'times': []})
-        if cur_day + 'ALL' in request.form:
-            dosage['days'].extend(hp.all_days)
-        else:
-            for k in request.form:
-                if cur_day in k:
-                    if request.form[k] is None or request.form[k] == '':
-                        return USER_ADD_FAILED
-                    dosage['days'].append(k[len(cur_day):])
-            
-        for k in request.form:
-            if cur_time in k:
-                if request.form[k] is None or request.form[k] == '':
-                    return USER_ADD_FAILED
-                dosage['times'].append(request.form[k])
-        dosages.append(dosage)
+    meds = req['med_names']
+    dosages = req['dosages']
+    
+    if len(meds) == 0 or len(dosages) == 0:
+        if make_new_user == True:
+            return USER_ADD_FAILED
+        return MEDICINE_ADD_FAILED
     
     cur_session = Session()
     m_ids = [hp.keygen(cur_session, Medication, Medication.med_id) for i in range(len(meds))]
     d_ids = [hp.keygen(cur_session, Dosage, Dosage.dosage_id) for i in range(len(dosages))]
-        
+    
+    if u_id is None:
+        cur_user = cur_session.query(User).filter(User.patient_id == p_id).first()
+        if cur_user is None:
+            cur_session.close()
+            return MEDICINE_ADD_FAILED
+        u_id = cur_user.user_id
     cur_meds = [Medication(user_id=u_id, med_id=m_ids[i], 
                            med_name=meds[i], 
                            dosage_id=d_ids[i],
@@ -237,20 +236,25 @@ def remove_user():
     if request.method == 'OPTIONS':
         return handle_preflight()
     
-    u_id = hp.read_user_id(request.form['u_id'])
+    req = request.get_json()
+    
+    p_id = req['p_id']
     
     cur_session = Session()
-    cur_user = cur_session.query(User).filter(User.user_id == u_id).first()
+    cur_user = cur_session.query(User).filter(User.patient_id == p_id).first()
     
-    if len(u_id) == 0 or cur_user is None:
+    if len(p_id) == 0 or cur_user is None:
         cur_session.close()
         return USER_DOES_NOT_EXIST
+    
+    u_id = cur_user.user_id
     
     cur_session.query(Install).filter(Install.user_id == u_id).delete()
     cur_session.query(User).filter(User.user_id == u_id).delete()
     meds = cur_session.query(Medication).filter(Medication.user_id == u_id).all()
     
     for med in meds:
+        #TODO : Might not want to remove all intake info
         cur_session.query(Intake).filter(Intake.med_id == med.med_id).delete()
         cur_session.query(Dosage).filter(Dosage.dosage_id == med.dosage_id).delete()
         cur_session.delete(med)
@@ -263,7 +267,30 @@ def remove_user():
 
 @app.route('/add_medicine', methods=['POST'])
 def add_medicine():
-    create_user(make_new_user=False)
+    return create_user(make_new_user=False)
+    
+@app.route('/remove_medicine', methods=['POST', 'OPTIONS'])
+def remove_medicine():
+    if request.method == 'OPTIONS':
+        return handle_preflight()
+    
+    req = request.get_json()
+    m_id = req['med_id']
+    
+    cur_session = Session()
+    cur_med = cur_session.query(Medication).filter(Medication.med_id == m_id).first()
+    
+    if cur_med is None:
+        return MEDICINE_NOT_FOUND
+    
+    cur_session.query(Dosage).filter(Dosage.dosage_id == cur_med.dosage_id).delete()
+    cur_session.query(Intake).filter(Intake.med_id == cur_med.med_id).delete()
+    
+    cur_session.delete(cur_med)
+    cur_session.commit()
+    cur_session.close()
+    
+    return MEDICINE_REMOVE_SUCCESS
     
 
 @app.route('/get_patient_list', methods=['GET'])
@@ -360,8 +387,34 @@ def create_intake():
     cur_session.close()
     
     return INTAKE_ADD_SUCCESS
-    
 
+@app.route('/update_dosage', methods = ['POST'])
+def update_dosage():
+    req = request.get_json()
+    
+    m_id = req['med_id']
+    dosage = req['dosages'][0]
+    
+    cur_session = Session()
+    prev_med = cur_session.query(Medication).filter(Medication.med_id == m_id).first()
+    if prev_med is None:
+        cur_session.close()
+        return DOSAGE_ADD_FAILED
+    
+    prev_dosage = cur_session.query(Dosage).filter(Dosage.dosage_id == prev_med.dosage_id).first()
+    
+    if prev_dosage is None:
+        cur_session.close()
+        return DOSAGE_ADD_FAILED
+    
+    prev_dosage.days = hp.stringify(dosage['days'])
+    prev_dosage.times = hp.stringify(dosage['times'])
+    
+    cur_session.commit()
+    cur_session.close()
+    return DOSAGE_ADD_SUCCESS
+        
+    
 @app.route('/get_install/', methods=['GET'])
 def get_install():
     cur_session = Session()

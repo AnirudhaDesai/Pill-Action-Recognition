@@ -14,5 +14,11 @@
     "path": "../../model/",
     "timeout": 300000,
     "touch_threshold": 2000
+  },
+  "db": {
+    "name": "testing",
+    "user": "amitrc",
+    "password": "preparetest",
+    "port": "3306"
   }
 }

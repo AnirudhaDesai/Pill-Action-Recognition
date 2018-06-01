@@ -42,7 +42,11 @@ hp = Helpers(app)      # all common methods/variables can go here
 # These are my own credentials for my local MySql Server, you need
 # to use your own server credentials when running locally or use
 # in memory sqlite - create_engine('sqlite:///:memory:', echo = True)
-sql_engine = create_engine('mysql+pymysql://amitrc:preparetest@localhost:3306/testing', 
+db_user = hp.get_config('db', 'user')
+db_pass = hp.get_config('db', 'password')
+db_name = hp.get_config('db', 'name')
+db_port = str(hp.get_config('db', 'port'))
+sql_engine = create_engine('mysql+pymysql://'+db_user+':'+db_pass+'@localhost:'+db_port+'/'+db_name, 
                            pool_recycle=3600, 
                            echo=True)
 Session = sessionmaker(bind=sql_engine)

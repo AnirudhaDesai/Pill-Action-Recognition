@@ -18,6 +18,7 @@ DIRECTORY = '../misc/test_bed_all/'
 TEST_SAMPLES = 20
 TRAINING_MODEL = 'Ensemble' # other option is 'Binary', decides which model is being trained
 CLASS_TO_BE_TESTED = 1 # For binary model keep 1, otherwise it represents which action you want to train for
+ITERATIONS = 500
 
 class newmodel:
     def __init__(self, a = None):
@@ -60,7 +61,7 @@ if __name__ == '__main__':
     
     Y = (Y == cls)*1.0
     
-    iterations = 500
+    iterations = ITERATIONS
     models = {LinearSVC(): 'Linear SVM', SVC(kernel='sigmoid'): 'Sigmoid SVM', RFC(): 'Random Forest', 
               logreg(): 'Logistic Regression', dtree(): 'Decision Tree', newmodel(): 'True Random',
               newmodel(a=0): 'Always Zero', newmodel(a=1): 'Always One', KNN(n_neighbors=3): 'KNN'}

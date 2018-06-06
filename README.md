@@ -1,5 +1,19 @@
 # Pill-Action-Recognition
-ML based Pill Action Recognition  
+ML based Pill Action Recognition <- (we've come far from this)
+
+## Index
+This was getting long, so here's some help -
+
+  * [Server Setup](#server-setup)
+  * [Config System](#config-system)
+    * [Adding a Config Element](#adding-a-config-element)
+    * [Updating a Config Element](#updating-a-config-element)
+  * [Models](#models)
+    * [Model RollOut Plan](#model-rollout-plan)
+  * [Queueing Service](#queueing-service)
+    * [Enqueue](#enqueue)
+    * [Dispatch](#dispatch)
+  * [Prediction Service](#prediction-service)
 
 ## Server Setup
 Before you can run the server you need the following libraries. Note that we use **python 3**.  
@@ -48,7 +62,7 @@ We have a fairly easy to use config system in place which allows for dynamic edi
 To add an element, simply modify the file `Code/config.json` and add your element to whichever heirarchy you want. 
 
 ### Updating a Config Element
-To update, first edit the config file and then make a call to the config reset endpoint, on a locally run server this endpoint resolves to `localhost:5000/reset_config`. This should re-load the config file. Note that this also re-starts the [PredictionService](#prediction-service) and the [QueueingService](#queueing-service), this means any data that was being maintained in them (in-memory) will be lost. 
+To update, first edit the config file and then make a call to the config reset endpoint, on a locally run server this endpoint resolves to `localhost:5000/reset_config`. This should re-load the config file. Note that this also re-starts the [Prediction Service](#prediction-service) and the [Queueing Service](#queueing-service), this means any data that was being maintained in them (in-memory) will be lost. 
 
 ## Models
 
@@ -61,7 +75,7 @@ Note that even though the **Ensemble** and **Binary** models might appear very s
 
 **FUN FACT -** Since there is no way to collect ground data for the **Ensemble** model (right now), we can't use it for the pilot! We have to use the **Binary** clf. Also since we don't have a trained **Binary** clf available right from the start, we require a model roll-out plan to train this model first. I describe it below.
 
-### Model Roll-Out Plan
+### Model RollOut Plan
 A simple way we could do this is by first using the **Touch** predictor for the beginning of the pilot with a low enough touch duration value so that most touches trigger a *true* prediction from the system. This will in turn initiate a push-notification to the phone-app, which shows up in the form of a question to the user - *Did you just take xyz med?*. Whatever may be the answer to this question, we use it as ground truth. We have to use this way to ensure we are able to collect as much ground truth data as possible, thus we keep the touch duration low so that we trigger these chain of events quite frequently.  
 
 When we believe a considerable amount of data has been collected we  do the following -  
@@ -77,8 +91,17 @@ When we believe a considerable amount of data has been collected we  do the foll
 After the last step, the model(s) will be stored in path `model/` as *.pkl* files. The server will pickup these models after you change the config file and reset the config. Rejoice! You're done!
 
 ## Queueing Service
-This is the service class that maintains in-memory queues for every user containing their data.
+This is the service class that maintains in-memory queues for every user containing their data. The main code for this is in `Code/server/Q_service.py`. This is a static class (implemented in a non-pythonic way). I wouldv'e preferred this to be a [Singleton](https://en.wikipedia.org/wiki/Singleton_pattern) or at least implemented in the [pythonic way](https://stackoverflow.com/questions/30556857/creating-a-static-class-with-no-instances) but it started off this way and I never got to changing it. This service needs to be started by making a call to `Q_service.start_service()`. I do this when the server starts up. The service is re-started each time the [config-system is refreshed](#updating-a-config-element).
 
+The Q_service maintains an in-memory dictionary which maps each medication-ID to the sensor data (as a python list) collected so far for that medication-ID. The service has a couple of variables that it loads from the config, they are -
+  * `T_WINDOW` - When the oldest data in the Queue for any medication-ID is at least `T_WINDOW` milliseconds old, then a dispatch is initiated. This means this value is in *milliseconds*.
+  * `SLIDE_WINDOW` - We do not want to throw away *all* the data we dispatched, so instead we only remove the oldest `SLIDE_WINDOW` milliseconds worth of data. This means this value is in *milliseconds*.
+
+### Enqueue
+The method `Q_service.enqueue()` gets called on a different thread that is spawned by the server, this is done so that the thread responding to the `/upload_sensor_readings` request (coming from the app) does not wait on all of the fancy stuff that the Q_service and PredictionService do. This method essentially pushes the new data into the Queue corresponding to the correct Medication-ID and checks if there is enough data to perform a dispatch. To check if there is enough data, we currently only check the timestamp corresponding to the sensor `[0,0]` which is `[0-base metawear, 0-accel]`. We could check others too but I don't know if it's needed as if one sensor has seen 4-5 seconds worth of data, other sensors too must be around that mark. If you feel the samples being dispatched are too small(or big) this is the culprit!! My guess is each sensor should produce ~70-100 samples to be giving us useful information, less than ~20 means it's a cause for concern.
+
+### Dispatch
+The method `Q_service.dispatch()` gets called only if there is enough data to perform a dispatch. This method just extracts `T_WINDOW` worth of data from the queue for the given Medication-ID, wraps that data up and sends it off to the [Prediction Service](#prediction-service). The method also pops out the oldest `SLIDE_WINDOW` milliseconds worth of data, it uses basic python array indexing to do this nothing fancy.
 
 ## Prediction Service
 This is the service class that performs the predictions using the predictors it also maintains the PredictionTime table.

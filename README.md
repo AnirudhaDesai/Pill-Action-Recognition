@@ -41,6 +41,15 @@ First, start your instance of **mysql**. Now start the python server with the fo
 
 It should take a few seconds on the first try as it will create all the tables in your DB. If you installed the **mysql** workbench you should be able to see all the changes to the DB on it. If everything goes fine, try and hit `localhost:5000/` from your browser you should see the flask debug toolbar stuff come up. And that's all folks!
 
+## Config System
+We have a fairly easy to use config system in place which allows for dynamic editing of various parameters relating to the server. This system works by pulling out the values of various named and heirarchied elements from the file `Code/config.json`. To use this system in your code, you can simply use an object of class `Helpers` from `Code/server/helpers.py`. Note that this class is [Singleton](https://en.wikipedia.org/wiki/Singleton_pattern), personally, I wouldv'e kept this as a static class ([the pythonic way](https://stackoverflow.com/questions/30556857/creating-a-static-class-with-no-instances)) instead as it's essentially a utils class but I guess this is what we started with and I never got to changing it. You can get the value of any config element in the config file you have by passing in the heirarchy-path of that element (in order) to `Helpers.get_config()`. For example to get the value of `config.models.type` one would use `helpers_object.get_config('models', 'type')`.
+
+### Adding a Config Element
+To add an element, simply modify the file `Code/config.json` and add your element to whichever heirarchy you want. 
+
+### Updating a Config Element
+To update, first edit the config file and then make a call to the config reset endpoint, on a locally run server this endpoint resolves to `localhost:5000/reset_config`. This should re-load the config file. Note that this also re-starts the [PredictionService](#prediction-service) and the [QueueingService](#queueing-service), this means any data that was being maintained in them (in-memory) will be lost. 
+
 ## Models
 
 There are 3 models that are available to use (others can be added easily, more on that later), I also mention how to set a few of the hyperparameters of the model by modifying `config.json` -    
@@ -63,5 +72,13 @@ When we believe a considerable amount of data has been collected we  do the foll
     * `TEST_SAMPLES` would be the number of samples to use for the validation set during cross validation.
     * `TRAINING_MODEL` "Binary" or "Ensemble".
     * `CLASS_TO_BE_TESTED` keep 1 for "Binary"
+    * `ITERATIONS` number of iterations to use during cross-val.
 
 After the last step, the model(s) will be stored in path `model/` as *.pkl* files. The server will pickup these models after you change the config file and reset the config. Rejoice! You're done!
+
+## Queueing Service
+This is the service class that maintains in-memory queues for every user containing their data.
+
+
+## Prediction Service
+This is the service class that performs the predictions using the predictors it also maintains the PredictionTime table.

@@ -14,12 +14,14 @@ from dateutil import parser as dateparser
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from tables import Install, User, Medication, Dosage, Intake, SensorReading, Base
+from tables import Install, User, Medication, Dosage, Intake, SensorReading, PredictionTime, Base
 from q_service import Q_service
 from prediction_service import PredictionService
 from concurrent.futures import ThreadPoolExecutor
 import threading
 from flask_debugtoolbar import DebugToolbarExtension
+from collections import defaultdict
+import numpy as np
 
 
 app = Flask(__name__)
@@ -54,6 +56,8 @@ Base.metadata.create_all(sql_engine)
 PredictionService.start_service(Session, hp)
 Q_service.start_service(hp)
 
+ACTION_WINDOW = hp.get_config('model', 'action_window')
+
 # Standard responses
 ENTRY_NOT_FOUND = ('', 204)
 DEVICE_ALREADY_REGISTERED = ('Device already registered with same push_id', 200)
@@ -71,6 +75,7 @@ DATA_ADD_REQUEST_COMPLETE = ('Successfully raised data add request', 201)
 CONFIG_RESET_SUCCESS = ('Successfully reset config file', 200)
 DOSAGE_ADD_FAILED = ('Failed to add/update dosage info', 400)
 DOSAGE_ADD_SUCCESS = ('Successfully added/updated dosage info', 201)
+DATA_EXTRACTION_COMPLETE = ('data extraction complete', 200)
 
 
 @app.route('/sign_in', methods = ['POST'])
@@ -151,7 +156,10 @@ def upload_sensor_readings():
         ret_tim[d_type, s_type].append(float(fields[5]))
         sensor_readings.append(SensorReading(user_id=u_id, 
                                              med_id=m_id,
-                                             data=fields[0] + '`' + fields[1] + '`' + fields[4] + '`' + fields[5]))
+                                             sensor_location=str(d_type),
+                                             sensor_type=str(s_type),
+                                             data=fields[4],
+                                             time=fields[5]))
     
     print('Moving on to different thread for async call, current thread -', threading.current_thread())
     async_executor.submit(Q_service.enqueue, ret, ret_tim, ret_touch, m_id, u_id)
@@ -372,7 +380,13 @@ def create_intake():
     m_id = req['medicine_id']
     p_date = req['planned_date_time']
     a_date = req['actual_date_time']
-    i_status = req['intake_status']
+    
+    i_status = 3
+    if a_date is not None and len(a_date)>0:
+        i_status = hp.get_intake_status(p_date, a_date)
+    
+    if i_status != 3:
+        PredictionService.confirm_intake(m_id, dateparser.parse(a_date))
     
     cur_intake = Intake(med_id=m_id, 
                         actual_date=a_date, 
@@ -458,6 +472,80 @@ def reset_config():
     PredictionService.start_service(Session, hp)
     return CONFIG_RESET_SUCCESS
 
+
+@app.route('/extract_training_data', methods=['GET'])
+def extract_training_data():
+    '''
+    This code probably has lots of bugs!!
+    Going in untested.
+    '''
+    global hp
+    cur_session = Session()
+    
+    sensor_data_list = cur_session.query(SensorReading).all()
+    predictions_list = cur_session.query(PredictionTime).all()
+    medications_list = cur_session.query(Medication).all()
+    
+    cur_session.close()
+    
+    predictions = defaultdict(list)
+    sensor_data = defaultdict(list)
+    
+    for pred in predictions_list:
+        predictions[pred.med_id].append(pred)
+    for s_data in sensor_data_list:
+        sensor_data[s_data.med_id].append(s_data)
+    
+    read_time = lambda x: float(x.time)
+    all_data = []
+    all_labels = []
+    
+    for med in medications_list:
+        cur_preds = predictions[med.med_id]
+        cur_data = sensor_data[med.med_id]
+        
+        cur_preds.sort(key=read_time)
+        cur_data.sort(key=read_time)
+        
+        negative_pile = []
+        positive_samples = []
+        end_idx = 0
+        for pred in cur_preds:
+            start_idx = lower_bound(cur_data, float(pred.time), read_time, first_idx=end_idx)
+            negative_pile.extend(cur_data[end_idx:start_idx])
+            end_idx = lower_bound(cur_data, float(pred.time) + ACTION_WINDOW, read_time, first_idx=start_idx)
+            positive_samples.append(cur_data[start_idx:end_idx])
+        
+        pos_data = get_data(positive_samples)
+        
+        negative_samples = []
+        start_idx = 0
+        cur_sample = []
+        for item in negative_pile:
+            if read_time(item) - read_time(negative_pile[start_idx]) >= ACTION_WINDOW:
+                negative_samples.append(cur_sample)
+                cur_sample = []
+            cur_sample.append(item)
+        if len(cur_sample) > 0:
+            negative_samples.append(cur_sample)
+        
+        neg_data = get_data(negative_samples)
+        data = pos_data + neg_data
+        all_data.extend(data)
+        labels = [0]*len(data)
+        for i in range(len(pos_data)):
+            labels[i] = 1
+        all_labels.extend(labels)
+    
+    all_data = np.array(all_data)
+    all_labels = np.array(all_labels)
+    
+    path = hp.get_config('model', 'path_to_data')
+    np.savez(path + 'combined_data.npz', all_data, all_labels)
+    
+    return DATA_EXTRACTION_COMPLETE
+        
+
 @app.after_request
 def decorate_response(response):
     response.headers['Access-Control-Allow-Origin'] = '*'
@@ -471,3 +559,23 @@ def handle_preflight():
     resp.headers['Content-Type'] = 'text/html'
     return resp
 
+def lower_bound(lst, bound, key, first_idx=0):
+    for idx in range(first_idx, len(lst)):
+        if key(lst[idx]) >= bound:
+            return idx
+    return len(lst)
+
+def get_data(samples):
+    data = []
+    for sample in samples:
+        data_item = hp.get_clean_data_array((2,2,3))
+        for reading in sample:
+            d_type = int(reading.sensor_location)
+            s_type = int(reading.sensor_type)
+            
+            x_d, y_d, z_d = reading.data.split('~')
+            data_item[d_type, s_type, 0].append(x_d)
+            data_item[d_type, s_type, 1].append(y_d)
+            data_item[d_type, s_type, 2].append(z_d)
+        data.append(data_item)
+    return data

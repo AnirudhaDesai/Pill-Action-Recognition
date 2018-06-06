@@ -108,12 +108,29 @@ class SensorReading(Base):
     reading_id = Column(Integer, primary_key=True)
     user_id = Column(String(100))
     med_id = Column(Integer)
-    data = Column(String(100))
+    sensor_location = Column(String(2))
+    sensor_type = Column(String(2))
+    data = Column(String(60))
+    time = Column(String(25))
     
     
     def __repr__(self):
-        return '<SensorReadings(user_id="%s", med_id="%s", data="%s")>' % (
+        return '<SensorReadings(user_id="%s", med_id="%s", data="%s", time="%s")>' % (
                 self.user_id,
                 self.med_id,
-                self.data)
+                self.data,
+                self.time)
+
+class PredictionTime(Base):
+    __tablename__ = 'predictiontimes'
+    
+    pred_id = Column(Integer, primary_key=True)
+    med_id = Column(Integer)
+    time = Column(String(100))
+    
+    def __repr__(self):
+        return '<Predictions(pred_id="%s", med_id="%s", time="%s")>' % (
+                self.pred_id,
+                self.med_id,
+                self.time)
     

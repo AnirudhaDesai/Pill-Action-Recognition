@@ -13,6 +13,7 @@ from pyfcm import FCMNotification
 from hashlib import sha256 as sha2
 from dateutil import parser
 from datetime import datetime, timedelta
+import time
 
 
 CONFIG_PATH = '../config.json'
@@ -239,6 +240,22 @@ class Helpers:
                                                 tim) for tim in ideal_times]
         
         return reversed(ideal_intakes)
+        
+    def get_intake_status(self, planned_date, actual_date):
+        p_date = parser.parse(planned_date)
+        a_date = parser.parse(actual_date)
+        
+        delta = time.mktime(a_date.utctimetuple()) - time.mktime(p_date.utctimetuple())
+        four_hours = 1000*60*60*4
+        
+        if delta < 0:
+            return 1
+        elif delta > four_hours:
+            return 2
+        
+        return 0
+        
+        
         
         
         

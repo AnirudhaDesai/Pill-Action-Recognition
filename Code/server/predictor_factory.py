@@ -7,6 +7,7 @@ Created on Fri May 25 10:03:18 2018
 
 from touch_predictor import TouchPredictor
 from ensemble_predictor import EnsemblePredictor
+from binary_predictor import BinaryPredictor
 
 
 class PredictorFactory:
@@ -22,4 +23,6 @@ class PredictorFactory:
             return EnsemblePredictor(helper)
         elif pred_type == 'Touch':
             return TouchPredictor(helper)
+        elif pred_type == 'Binary':
+            return BinaryPredictor(helper)
     

@@ -6,6 +6,8 @@ Created on Mon Apr 16 18:45:20 2018
 """
 from collections import defaultdict
 from predictor_factory import PredictorFactory
+from tables import PredictionTime
+import time
 
 class PredictionService():
     m_twist, m_dispense, m_h2m, m_w2m = None, None, None, None
@@ -13,6 +15,7 @@ class PredictionService():
     helper = None
     model_type = None
     TIMEOUT_WINDOW = None # timeout for predict status in milliseconds
+    CONFIRMATION_TIMEOUT = None
       
     user_predict_status = None
     features_to_use = []
@@ -27,6 +30,8 @@ class PredictionService():
         PredictionService.db_session_factory = sf
         PredictionService.helper = hlp
         PredictionService.TIMEOUT_WINDOW = hlp.get_config('model', 'timeout')
+        PredictionService.CONFIRMATION_TIMEOUT = hlp.get_config('model', 
+                                                                'confirmation_timeout')
         PredictionService.predictor = PredictorFactory.create_predictor(hlp)
         
         PredictionService.user_predict_status = defaultdict(lambda : (hlp.STATUS_NO, -1))     # latest (status,time) of predicted "yes"
@@ -88,3 +93,19 @@ class PredictionService():
         # user replied to notification        
         PredictionService.user_predict_status[med_id] = (status, time)
     
+    @staticmethod
+    def confirm_intake(med_id, date):
+        intake_t_stamp = time.mktime(date.utctimetuple())
+        
+        cur_status, pred_time = PredictionService.user_predict_status[med_id]
+        
+        if cur_status == PredictionService.helper.STATUS_YES:
+            time_diff = abs(pred_time - intake_t_stamp)
+            if time_diff < PredictionService.CONFIRMATION_TIMEOUT:
+                cur_session = PredictionService.db_session_factory()
+                
+                cur_entry = PredictionTime(med_id=med_id, time=str(pred_time))
+                cur_session.add(cur_entry)
+                cur_session.commit()
+                cur_session.close()
+                

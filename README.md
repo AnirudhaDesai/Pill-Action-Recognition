@@ -1,5 +1,5 @@
 # Pill-Action-Recognition
-ML based Pill Action Recognition <- (we've come far from this)
+ML based Pill Action Recognition <- (we've come a long way from this)
 
 ## Index
 This was getting long, so here's some help -
@@ -9,11 +9,14 @@ This was getting long, so here's some help -
     * [Adding a Config Element](#adding-a-config-element)
     * [Updating a Config Element](#updating-a-config-element)
   * [Models](#models)
-    * [Model RollOut Plan](#model-rollout-plan)
+    * [Model RollOut Plan (UNTESTED)](#model-rollout-plan)
   * [Queueing Service](#queueing-service)
     * [Enqueue](#enqueue)
     * [Dispatch](#dispatch)
   * [Prediction Service](#prediction-service)
+    * [Predict](#predict)
+    * [Confirm Prediction (UNTESTED)](#confirm-prediction)
+    * [Adding a New Predictor](#adding-a-new-predictor)
 
 ## Server Setup
 Before you can run the server you need the following libraries. Note that we use **python 3**.  
@@ -76,6 +79,7 @@ Note that even though the **Ensemble** and **Binary** models might appear very s
 **FUN FACT -** Since there is no way to collect ground data for the **Ensemble** model (right now), we can't use it for the pilot! We have to use the **Binary** clf. Also since we don't have a trained **Binary** clf available right from the start, we require a model roll-out plan to train this model first. I describe it below.
 
 ### Model RollOut Plan
+#### UNTESTED
 A simple way we could do this is by first using the **Touch** predictor for the beginning of the pilot with a low enough touch duration value so that most touches trigger a *true* prediction from the system. This will in turn initiate a push-notification to the phone-app, which shows up in the form of a question to the user - *Did you just take xyz med?*. Whatever may be the answer to this question, we use it as ground truth. We have to use this way to ensure we are able to collect as much ground truth data as possible, thus we keep the touch duration low so that we trigger these chain of events quite frequently.  
 
 When we believe a considerable amount of data has been collected we  do the following -  
@@ -91,7 +95,7 @@ When we believe a considerable amount of data has been collected we  do the foll
 After the last step, the model(s) will be stored in path `model/` as *.pkl* files. The server will pickup these models after you change the config file and reset the config. Rejoice! You're done!
 
 ## Queueing Service
-This is the service class that maintains in-memory queues for every user containing their data. The main code for this is in `Code/server/Q_service.py`. This is a static class (implemented in a non-pythonic way). I wouldv'e preferred this to be a [Singleton](https://en.wikipedia.org/wiki/Singleton_pattern) or at least implemented in the [pythonic way](https://stackoverflow.com/questions/30556857/creating-a-static-class-with-no-instances) but it started off this way and I never got to changing it. This service needs to be started by making a call to `Q_service.start_service()`. I do this when the server starts up. The service is re-started each time the [config-system is refreshed](#updating-a-config-element).
+This is the service class that maintains in-memory queues for every user containing their data. The main code for this is in `Code/server/Q_service.py`. This is a static class (implemented in a non-pythonic way). I would've preferred this to be a [Singleton](https://en.wikipedia.org/wiki/Singleton_pattern) or at least implemented in the [pythonic way](https://stackoverflow.com/questions/30556857/creating-a-static-class-with-no-instances) but it started off this way and I never got to changing it. This service needs to be started by making a call to `Q_service.start_service()`. I do this when the server starts up. The service is re-started each time the [config-system is refreshed](#updating-a-config-element), this causes it to lose all data from its in-memory dictionary.
 
 The Q_service maintains an in-memory dictionary which maps each medication-ID to the sensor data (as a python list) collected so far for that medication-ID. The service has a couple of variables that it loads from the config, they are -
   * `T_WINDOW` - When the oldest data in the Queue for any medication-ID is at least `T_WINDOW` milliseconds old, then a dispatch is initiated. This means this value is in *milliseconds*.
@@ -104,4 +108,21 @@ The method `Q_service.enqueue()` gets called on a different thread that is spawn
 The method `Q_service.dispatch()` gets called only if there is enough data to perform a dispatch. This method just extracts `T_WINDOW` worth of data from the queue for the given Medication-ID, wraps that data up and sends it off to the [Prediction Service](#prediction-service). The method also pops out the oldest `SLIDE_WINDOW` milliseconds worth of data, it uses basic python array indexing to do this nothing fancy.
 
 ## Prediction Service
-This is the service class that performs the predictions using the predictors it also maintains the PredictionTime table.
+This is the service class that performs the predictions using the predictors it also maintains the PredictionTime table. Similar to the [Queueing Service](#queueing-service), this is a static class. It also maintains an in-memory dictionary which maps Medication-ID to a tuple `(current_prediction_status, previous_yes_timestamp)`. The service has to be started by calling `PredictionService.start_service()` and this is done when the server starts up. The service is re-started each time the [config-system is refreshed](#updating-a-config-element), this causes it to lose all data from its in-memory dictionary.
+
+The class draws a couple of global (well, *static* to be precise) variables from the config, they are -
+  * `TIMEOUT_WINDOW` - The time in milliseconds after which a previous *True* prediction is considered *expired*. Any subsequent predictions (irrespective of their result) need not be made before the previous *True* prediction *expires*.
+  * `CONFIRMATION_TIMEOUT` - The time in milliseconds after which a *True* prediction can be considered to be false postive (mis-classified). The system waits for a call to the endpoint `/create_intake`, which gets called when a person answer *Yes* to the question - *Did you just take a pill?*. If the system doesn't get this request or gets it after the `CONFIRMATION_TIMEOUT`, then it is considered a mis-classification, otherwise it is correct and a true positive.
+
+The class uses a predictor that is created by the PredictorFactory according to the config element `config.model.type`. The system for adding a new predictor makes use of the [factory design pattern](https://en.wikipedia.org/wiki/Factory_method_pattern). This makes it easy to [add a new predictor](#adding-a-new-predictor) without changing code inside Prediction Service.
+
+### Predict
+The only method used by clients of the PredictionService class is the `PredictionService.predict()` method. This calls upon the predict method as implemented by the predictor object being used. In case, the prediction resolves to be *True*, then this method initiates a push notification for the app according to the `user_id` corresponding to the Medication-ID. This requires a call to `pyfcm` which needs the `push_id` of all the devices registered to this user and all of them get a push notification if things go well. The notification itself is a [*data-message*](https://firebase.google.com/docs/cloud-messaging/concept-options) that **is currently not meant to** convey information to the app, it just triggers the question *Did you just take a pill?*. Now, in case you need to know which pill is being talked about, we can send it through as the *data-message*. 
+
+### Confirm Prediction
+#### UNTESTED
+The method `PredictionService.confirm_intake()` is used to record the timestamp of a *True* prediction which is also a correct prediction, in other words, the user did indeed take the pill at that exact time. This method is used to collect training data. It stores the timestamps of these true labels into the table **PredictionTimes**. This is going in **untested** because I can't test it without the complete system being in place (I could, but it would be too contrived and not indicative of the real-world at all).
+
+### Adding a New Predictor
+Make a new class and implement the abstract class `Predictor` from `Code/server/predictor.py` and make your own implementation of the method `Peredictor.predict()`, note that the data that this method accepts as input is a tuple `(sensor_data, touch_input_data)`. Touch input data is just a list of tuples `(touch_state, timestamp)`, while sensor data is a list of numpy arrays each of shape `[2-sensor_location,2-sensor_type,3-axis]`. Note that the prediction service does not get to know the timestamps corresponding to the sensor-data. I cannot remember the reason (if any) for doing this. After implementing the predict method, you need to register this new predictor class with the `PredictorFactory`, add the new predictor to the *if-else-ladder* in the `PredictorFactory.create_predictor()` method and change your config file entry `config.model.type` to use this predictor right away.
+

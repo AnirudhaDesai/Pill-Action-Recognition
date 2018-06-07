@@ -17,6 +17,10 @@ This was getting long, so here's some help -
     * [Predict](#predict)
     * [Confirm Prediction (UNTESTED)](#confirm-prediction)
     * [Adding a New Predictor](#adding-a-new-predictor)
+  * [Database](#database)
+    * [Adding a new table](#adding-a-new-table)
+    * [Updating an existing table](#updating-and-existing-table)
+  * [Things To Look Out for](#things-to-look-out-for)
 
 ## Server Setup
 Before you can run the server you need the following libraries. Note that we use **python 3**.  
@@ -126,3 +130,21 @@ The method `PredictionService.confirm_intake()` is used to record the timestamp 
 ### Adding a New Predictor
 Make a new class and implement the abstract class `Predictor` from `Code/server/predictor.py` and make your own implementation of the method `Peredictor.predict()`, note that the data that this method accepts as input is a tuple `(sensor_data, touch_input_data)`. Touch input data is just a list of tuples `(touch_state, timestamp)`, while sensor data is a list of numpy arrays each of shape `[2-sensor_location,2-sensor_type,3-axis]`. Note that the prediction service does not get to know the timestamps corresponding to the sensor-data. I cannot remember the reason (if any) for doing this. After implementing the predict method, you need to register this new predictor class with the `PredictorFactory`, add the new predictor to the *if-else-ladder* in the `PredictorFactory.create_predictor()` method and change your config file entry `config.model.type` to use this predictor right away.
 
+## Database
+We use [sqlalchemy](https://docs.sqlalchemy.org/en/latest/) throughout the code, the engine we use is **mysql**. All tables being used can be found in the file `Code/server/tables.py`, their objectives are pretty self-explainatory. All these tables get created, if they don't already exist in the DB, upon the start of the server. Each table is actually a class that is defined in `tables.py`, with columns as data members of the class.
+
+### Adding a new table
+To add a new table, you need to create a new class in `tables.py` and have it inherit from the class `Base`. Each table needs a datamember `__tablename__`, other members are optional. You can refer to the [documentation](https://docs.sqlalchemy.org/en/latest/) to find out more about how to configure columns etc. To now add this table to the DB, you must restart the server. You should be able to see the DDL commands used to create the new table in the terminal when you start the server.
+
+### Updating an existing table
+Doing this is kind of risky, I would try to avoid it unless you are fine with purging the data in that table. I am not sure of the behaviour or impact on existing data upon doing so.
+
+## Things to look out for
+
+Here's some things I think one must be wary of while working with this code -
+  * The chances of things going wrong are highest for the code in `q_service.py`, `predicition_service.py` or the pieces going in untested - *Binary Predictor*, the `/extract_training_data` endpoint, the training pipeline with `model.py`.
+  * What's going on in this method `handle_preflight()` in `server.py` -> [Cross-Origin-Resource-Sharing](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS). Needed to make the dashboard work.
+  * There is no mechanism in place to get the current accuracy of the system. To put forward such a system, you need to take a look at `PredictionService.confirm_intake()`. This method confirms that an intake was really taken after a prediction is made by the system. To calculate accuracy, you need to look at the `/create_intake` requests. Essentially, all the requests with `intake_status != 3` give you all the times a pill has been consumed. Now, out of all these pill consumptions, the false postives and true positives can be calculated using the method `PredictionService.confirm_intake()`, since each positive prediction initiates a call to this method, thus any intake that is confirmed becomes a True Positive, while any intake that isn't is a False positive. The false negatives will be `total_create_intakes_status_not_3 - true_positives`. True negatives will be `total_predictions_made_so_far-TP-FP-FN`. Now with all four values, TP, FP, FN, TN, you can calculate the accuracy. I would suggest keeping live running values of these variables and adding an endpoint to the server which tells you the current accuracy using these values.
+  * The touch data is expected to portray changes in touch state. I do some smoothing when using it in the **Touch** based predictor, nothing fancy though.
+  * If the classifier performs worse than 50% accuracy, flip it.
+  * The `PredictionService.confirm_intake()` method assumes that the end-user is religous about replying to their push notifications. Also, it is expected that the phone-app, after the user interacts with the notification sends a `/create_intake` request with the `actual_datetime` field that reflects the exact time the notification popped up rather than the time the person responded to the notification. You might need to calibrate the value of `config.model.confirmation_timeout` according to the time delay between the server sending out a push notification and the phone receiving it.

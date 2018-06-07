@@ -4,7 +4,8 @@
   "basic": {
     "client_id": "432854040486-616hjahmac61qt8e2k2g1r8u77c0oha6.apps.googleusercontent.com",
     "api_key": "LOL",
-    "authorized_user": "apotheosis"
+    "authorized_user": "apotheosis",
+    "security": "OFF"
   },
   "queue": {
     "time_window": 4000,

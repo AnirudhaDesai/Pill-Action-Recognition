@@ -57,6 +57,8 @@ PredictionService.start_service(Session, hp)
 Q_service.start_service(hp)
 
 ACTION_WINDOW = hp.get_config('model', 'action_window')
+API_KEY = hp.get_config('basic', 'api_key')
+AUTHORIZED_USER = hp.get_config('basic', 'authorized_user')
 
 # Standard responses
 ENTRY_NOT_FOUND = ('', 204)
@@ -76,7 +78,23 @@ CONFIG_RESET_SUCCESS = ('Successfully reset config file', 200)
 DOSAGE_ADD_FAILED = ('Failed to add/update dosage info', 400)
 DOSAGE_ADD_SUCCESS = ('Successfully added/updated dosage info', 201)
 DATA_EXTRACTION_COMPLETE = ('data extraction complete', 200)
+ACCESS_DENIED = ('ACCESS DENIED', 401)
 
+@app.before_request
+def verify_token():
+    print('In here')
+    api_key = request.headers.get('X-Api-Key', None)
+    if api_key is not None:
+        print('API key exists!')
+        if api_key != API_KEY:
+            print('Unauthorized access request', api_key)
+            return ACCESS_DENIED
+    elif request.args.get('user', None) != AUTHORIZED_USER:
+        print('Unauthorized access request')
+        return ACCESS_DENIED
+    
+    return None
+    
 
 @app.route('/sign_in', methods = ['POST'])
 def sign_in():
